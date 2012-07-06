@@ -61,13 +61,13 @@ html, body {
 }
 
 #loading-area {
-  background-color: #fff; position: fixed; right: 0px; top: 0px;
-  width: 50px; height: 50px; z-index: 10;
+  background-color: #fff; margin-right: auto; margin-left: auto;
+  width: 50px; height: 50px; z-index: 106;
 }
 
 #loading-area img.loading {
-  position: fixed; right: 10px; top: 10px;
-  padding: 0px; margin: 0px; z-index: 12;
+  margin-left: auto; margin-right: auto;
+  padding: 0px; margin: 0px; z-index: 101;
 }
 
 a.topic-name {
@@ -101,7 +101,7 @@ ul.ka-select li {
 }
 
 .info-container-portrait { /** padding: 10px; **/
-  height:40%; width: 100%; max-height: 300px;
+  height:40%; width: 100%; max-height: 300px; min-height: 30%;
   position:absolute; bottom: 0px; left: 0px;
   background-color: #388fd0; /** #388fd0 **/
   z-index: 101; border-top: 1px solid #fff;
@@ -109,7 +109,7 @@ ul.ka-select li {
 
 .info-container-panorama {
   /** padding: 10px; **/
-  height:100%; width: 50%; max-width: 50%;
+  height:100%; width: 50%; max-width: 50%; min-width: 30%;
   position:absolute; bottom: 0px; right: 0px;
   background-color: #388fd0; /** #388fd0 **/
   z-index: 101; border-left: 1px solid #fff;
@@ -165,7 +165,7 @@ ul.ka-select li {
 }
 
 #close-button {
-  background-color: #fff;
+  background-color: #fff; float: none !important;
   position: absolute; right: 0px; top: 0px;
 }
 
@@ -175,12 +175,15 @@ ul.ka-select li {
   font: 12px/1.4 "Helvetica Neue", Arial, Helvetica, sans-serif;
   text-align: center; vertical-align: bottom; font-weight: bold;
   padding-top: 6px; padding-bottom: 6px;
+  z-index: 103;
 }
 
 #top-button {
-  position: fixed; right: 0px; 
+  position: fixed; right: 0px; bottom: 0px;
   background-color: transparent !important; 
-  bottom: 0px; color: #000; cursor: pointer;
+  color: #000; cursor: pointer;
+  float: none !important;
+  z-index: 103;
   /** font: 12px/1.4 "Helvetica Neue", Arial, Helvetica, sans-serif;
   text-align: center; vertical-align: bottom; font-weight: bold;
   padding-top: 6px; padding-bottom: 6px; width: 45px; */
@@ -235,7 +238,9 @@ ul.ka-select li {
 #go-more {
   /** position: fixed; left: 0px; top: -7px; **/
   background-image: url(front.png);
-  background-position-x: 25px;
+  background-position: 25px 7px;
+  /** background-position-x: 30px;
+  background-position-y: 3px; **/
 }
 
 #go-more.selected {

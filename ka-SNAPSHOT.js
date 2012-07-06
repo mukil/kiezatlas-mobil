@@ -80,6 +80,21 @@ var kiezatlas = new function() {
     kiezatlas.hideAddressBarThroughScrolling();
   }
   
+  this.executeBrowserSpecificCrap = function () {
+    // ### 
+    var head = document.getElementsByTagName('head')[0];
+    var style = document.createElement('style');
+    if (navigator.userAgent.indexOf('Fennec') != -1) {
+      style.innerHTML = '@media only screen { #top-button { display: none !important; } '
+        + '#go-more { background-position: 30px 10px; } }';
+    } else if (navigator.userAgent.indexOf('WebKit') != -1 && navigator.userAgent.indexOf('Android') != -1) {
+      style.innerHTML = '@media only screen { #go-more { background-position: 30px 12px !important;} }';
+    } else if (navigator.userAgent.indexOf('Opera') != -1) {
+      style.innerHTML = '@media only screen { #go-more { background-position: 30px 12px !important;} }';
+    }
+    head.appendChild(style);
+  }
+  
   this.loadCityMap = function (mapId, workspaceId) {
     kiezatlas.cityMapId = mapId;
     kiezatlas.workspaceId = workspaceId;
@@ -141,8 +156,10 @@ var kiezatlas = new function() {
   this.loadCityObjectInfo = function (topicId, renderFunction) {
     var url = baseUrl + "getGeoObjectInfo.php?topicId="+topicId;
     // var body = '{"method": "getGeoObjectInfo", "params": ["' + topicId+ '"]}';
+    kiezatlas.showDetailsProgressBar();
+    // 
     jQuery.ajax({
-      type: "GET", async: false,
+      type: "GET", async: true,
       // data: body, 
       url: url, dataType: 'json',
       beforeSend: function(xhr) { 
@@ -156,6 +173,16 @@ var kiezatlas = new function() {
         throw new Error('ERROR: detailed information on this point could not be loaded. please try again. ' + x);
       }
     });
+  }
+  
+  this.showDetailsProgressBar = function() {
+    var img = '<div id="loading-area"><img src="css/aLoading.gif" width="30" height="30" class="loading"></div>';
+    kiezatlas.showInfoContainer();
+    jQuery('#info-container').append(img);
+  }
+  
+  this.hideDetailsProgressBar = function() {
+    jQuery("#loading-area").remove();
   }
 
   this.renderInfo = function (topic) {
@@ -273,12 +300,14 @@ var kiezatlas = new function() {
     jQuery("#scroller").html(infoHeader);
     jQuery("#scroller").append(infoItem);
     //
-    kiezatlas.showInfoContainer();
+    // kiezatlas.showInfoContainer();
+    kiezatlas.hideDetailsProgressBar();
     // 
     if (kiezatlas.myScroll != undefined) {
       kiezatlas.myScroll.destroy();
       kiezatlas.myScroll = null;
     }
+    // 
     kiezatlas.myScroll = new iScroll('info-container', { 
       "momentum": true, "hScrollbar": false, "vScrollbar": true, 
       "hideScrollbar" : false, 

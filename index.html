@@ -12,7 +12,8 @@
   <script src="jquery.min.js"></script>
   <script src="leaflet/dist/leaflet.js"></script>
   <script src="iscroll.js"></script>
-  <script src="ka-0.3.min.js"></script>
+  <!-- script src="ka-0.3.min.js"></script-->
+  <script src="ka-SNAPSHOT.js"></script>
 </head>
 <body>
   <div id="map" class="fullsize">loading citymap ...</div>
@@ -30,6 +31,7 @@
     var map = new L.Map('map');
     kiezatlas.setMap(map);
     kiezatlas.renderSite();
+    kiezatlas.executeBrowserSpecificCrap();
     /* var requestesMapId = document.location.search.substring(5);
     if (requestesMapId == undefined || requestesMapId != cityMapEhrenamtId) {
       kiezatlas.loadCityMap(cityMapEventId, workspaceEventId);
