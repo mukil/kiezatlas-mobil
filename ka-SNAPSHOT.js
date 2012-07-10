@@ -159,7 +159,7 @@ var kiezatlas = new function() {
     kiezatlas.showDetailsProgressBar();
     // 
     jQuery.ajax({
-      type: "GET", async: true,
+      type: "GET", async: false,
       // data: body, 
       url: url, dataType: 'json',
       beforeSend: function(xhr) { 
