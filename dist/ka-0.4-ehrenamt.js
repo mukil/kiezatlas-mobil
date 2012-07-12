@@ -23,7 +23,7 @@ var IMAGES_URL = "http://www.kiezatlas.de/client/images/";
 // var alternative_items = [];
 // var lastStreetName = "";
 // permalink-states
-var baseUrl = SERVER_URL + "/maps/mobile/";
+var baseUrl = SERVER_URL + "/ehrenamt-mobile/";
   // baseUrl = "http://localhost/smartatlas/";
 var permaLink = "";
 var linkParams = [];
