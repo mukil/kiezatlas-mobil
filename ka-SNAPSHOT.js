@@ -13,9 +13,8 @@
  * @modified  02.July 2012
  */
 
-var SERVER_URL = "http://www.kiezatlas.de";
-// var SERVER_URL = "http://localhost:8080/kiezatlas";
-var SERVICE_URL = SERVER_URL + "/rpc/"; // to be used by the jquery ajax methods
+var SERVER_URL = "http://m.kiezatlas.de";
+  // var SERVER_URL = "http://localhost:8080/kiezatlas";
 var ICONS_URL = "http://www.kiezatlas.de/client/icons/"; // to be used by all icons if not relative to this folder
 var IMAGES_URL = "http://www.kiezatlas.de/client/images/";
 // ui-state
@@ -23,7 +22,7 @@ var IMAGES_URL = "http://www.kiezatlas.de/client/images/";
 // var alternative_items = [];
 // var lastStreetName = "";
 // permalink-states
-var baseUrl = SERVER_URL + "/maps/mobile/";
+var baseUrl = SERVER_URL + "/ehrenamt/";
   // baseUrl = "http://localhost/smartatlas/";
 var permaLink = "";
 var linkParams = [];
@@ -321,6 +320,7 @@ var kiezatlas = new function() {
   }
 
   this.showInfoContainer = function () {
+    kiezatlas.closeNotificationDialog();
     // 
     jQuery("#info-container").hide();
     jQuery("#top-button").hide();
@@ -404,24 +404,19 @@ var kiezatlas = new function() {
         var existingMarker = kiezatlas.getMarkerByLatLng(latlng);
         if (existingMarker != null) {
           marker = existingMarker;
-          // add current topicId
+          // add our current, proprietary topicId to the marker-object
           marker.options.topicId.push(topicId);
           var previousContent = marker._popup._content;
-          marker.bindPopup('<div id="' + topicId + '" onclick="kiezatlas.onBubbleClick(this)" class="topic-name item">'
-            + '<b id="' + topicId + '">' + topic.name + '</b>,&nbsp;...</div>' + previousContent);
-          // console.log(marker);
+          marker.bindPopup(kiezatlas.renderTitle(topic) + previousContent);
         } else {
           marker = new L.Marker(latlng, { 'clickable': true , 'topicId': [topicId] }); // icon: myIcon
-          marker.bindPopup('<div id="' + topicId + '" onclick="kiezatlas.onBubbleClick(this)" class="topic-name item">'
-            + '<b id="' + topicId + '">' + topic.name + '</b>,&nbsp;...</div>');
+          marker.bindPopup(kiezatlas.renderTitle(topic));
         }
         // add marker to map object
         kiezatlas.map.addLayer(marker);
         // reference each marker in kiezatlas.markers model
         kiezatlas.markers.push(marker);
         // 
-        // console.log(marker._latlng); 
-        // console.log(latlng);
         marker.on('click', function (e) {
           // 
           this._popup.options.autoPan = true;
@@ -436,6 +431,11 @@ var kiezatlas = new function() {
     }
     console.log("map.setup => " + kiezatlas.markers.length + " leaflets for " + kiezatlas.mapTopics.result.topics.length
       + " loaded topics");
+  }
+  
+  this.renderTitle = function (object) {
+    return '<div id="' + object.id + '" onclick="kiezatlas.onBubbleClick(this)" class="topic-name item">'
+      + '<b id="' + object.id + '">' + object.name + '&nbsp;&rsaquo;&rsaquo;</b></div>';
   }
   
   this.onBubbleClick = function (e) {
@@ -526,8 +526,17 @@ var kiezatlas = new function() {
   }
   
   this.onLocationError = function (e) {
-    // console.log(e);
-    console.log("hiding loading bar => " + jQuery("img.loading").css("display"));
+    var notificationDialog = '<div id="message" onclick="kiezatlas.closeNotificationDialog()" class="notification">'
+      + '<div id="content">Die Abfrage ihres aktuellen Standorts wurde erfolgreich zur&uuml;ckgewiesen. '
+        + 'Mit dem folgenden Link bieten wir ihnen die M&ouml;glichkeit '
+        + '<a href="javascript:kiezatlas.showKiezatlasControl()">einen der 12 Berliner Stadtbezirke direkt '
+        + 'anzuw&auml;hlen.</a>'
+      + '</div></div>';
+    jQuery("#map").append(notificationDialog);
+  }
+  
+  this.closeNotificationDialog = function () {
+    jQuery("#message").remove();
   }
 
   this.showKiezatlasControl = function () {
@@ -847,7 +856,7 @@ var kiezatlas = new function() {
   }
   
   this.makeEhrenamtsLink = function (url, label) {
-    urlMarkup = '<a href="' + url + '" target="_blank">Link zur T&auml;tigkeitsbeschreibung</a>';
+    urlMarkup = '<a href="' + url + '">Link zur T&auml;tigkeitsbeschreibung</a>';
       //  + '<img src="css/link_extern.gif" alt="(externer Link)" border="0" height="11" width="12"/>
     // else urlMarkup = '<a href="'+url+'" target="_blank">'+label+'</a>';
     return urlMarkup

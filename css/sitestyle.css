@@ -14,6 +14,28 @@ html, body {
   overflow: hidden;
 }
 
+#message.notification {
+  position: fixed; bottom: 0px; left: 0px;
+  background-color: #388fd0; color: #fff; width: 100%;
+  font: 12px/1.4 "Helvetica Neue", Arial, Helvetica, sans-serif;
+  line-height: 1.7; font-weight: bold;
+  z-index: 113;
+}
+
+#message #content {
+  padding: 20px;
+  padding-bottom: 50px;
+}
+
+#message.notification a {
+  text-decoration: none;
+  background-color: #fff; padding: 3px;
+}
+
+#close {
+  margin: 10px;
+}
+
 #map {
   font-size: 10px;
 }
