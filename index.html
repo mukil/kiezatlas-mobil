@@ -1,19 +1,27 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>EhrenamtsnetzApp (0.3-SNAPSHOT)</title>
+  <title>Berliner Ehrenamtsnetz-App (0.4.2)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <!-- what follows shall be an iphone tweak, found via http://stackoverflow.com/questions/4068559 -->
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta names="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+  <meta property="og:type" content="website"/>
+  <meta property="og:title" content="Berliner Ehrenamtsnetz-App"/>
+  <meta property="og:image" content="http://m.kiezatlas.de/ehrenamt/fb_ehrenamts_screen.jpg"/>
+  <meta property="og:url" content="http://m.kiezatlas.de/ehrenamt"/>
+  <meta property="og:site_name" content="Berliner Ehrenamtsnetz-App"/>
+  <meta property="og:description" content="Diese kostenlose App f&uuml;r Ihr Smartphone liefert Ihnen tagesaktuelle Infos zu ehrenamtlichen Veranstaltungen und Einsatzm&ouml;glichkeiten in Berlin."/>
+
   <link rel="stylesheet" href="leaflet/dist/leaflet.css"/>
   <!--[if lte IE 8]><link rel="stylesheet" href="../dist/leaflet.ie.css" /><![endif]-->
   <link rel="stylesheet" href="css/sitestyle.css"/>
   <script src="jquery.min.js"></script>
   <script src="leaflet/dist/leaflet.js"></script>
   <script src="iscroll.js"></script>
-  <!-- script src="ka-0.3.min.js"></script-->
-  <script src="ka-SNAPSHOT.js"></script>
+  <script src="ka-0.4.2.min.js"></script>
+  <!-- script src="ka-SNAPSHOT.js"></script-->
 </head>
 <body>
   <div id="map" class="fullsize">loading citymap ...</div>

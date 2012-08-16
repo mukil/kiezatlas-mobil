@@ -526,6 +526,8 @@ var kiezatlas = new function() {
   }
   
   this.onLocationError = function (e) {
+    kiezatlas.closeNotificationDialog();
+    // 
     var notificationDialog = '<div id="message" onclick="kiezatlas.closeNotificationDialog()" class="notification">'
       + '<div id="content">Die Abfrage ihres aktuellen Standorts wurde erfolgreich zur&uuml;ckgewiesen. '
         + 'Mit dem folgenden Link bieten wir ihnen die M&ouml;glichkeit '
@@ -856,7 +858,12 @@ var kiezatlas = new function() {
   }
   
   this.makeEhrenamtsLink = function (url, label) {
-    urlMarkup = '<a href="' + url + '">Link zur T&auml;tigkeitsbeschreibung</a>';
+    // quick fix to correct automaticyll imported links to new external mobile-website
+    var indexForMobileURL = url.indexOf("g.cfm");
+    var firstPartURL = url.substr(0, indexForMobileURL + 1);
+    var secondPartURL = url.substr(indexForMobileURL + 1);
+    var newMobileURL = firstPartURL + "_mobil" + secondPartURL;
+    urlMarkup = '<a href="' + newMobileURL + '" target="_blank">Link zur T&auml;tigkeitsbeschreibung</a>';
       //  + '<img src="css/link_extern.gif" alt="(externer Link)" border="0" height="11" width="12"/>
     // else urlMarkup = '<a href="'+url+'" target="_blank">'+label+'</a>';
     return urlMarkup
