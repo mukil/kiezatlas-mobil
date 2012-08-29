@@ -17,11 +17,27 @@
   <link rel="stylesheet" href="leaflet/dist/leaflet.css"/>
   <!--[if lte IE 8]><link rel="stylesheet" href="../dist/leaflet.ie.css" /><![endif]-->
   <link rel="stylesheet" href="css/sitestyle.css"/>
-  <script src="jquery.min.js"></script>
-  <script src="leaflet/dist/leaflet.js"></script>
-  <script src="iscroll.js"></script>
-  <script src="ka-0.4.2.min.js"></script>
-  <!-- script src="ka-SNAPSHOT.js"></script-->
+  <script type="text/javascript" src="jquery.min.js"></script>
+  <script type="text/javascript" src="leaflet/dist/leaflet.js"></script>
+  <script type="text/javascript" src="iscroll.js"></script>
+  <!-- script src="ka-0.4.2.min.js"></script-->
+  <script type="text/javascript" src="ka-SNAPSHOT.js"></script>
+  <script type="text/javascript">
+    var ADAPT_CONFIG = {
+      path: 'css/',
+      // true = Change on window resize and page tilt.
+      dynamic: true,
+      // Optional callback... myCallback(i, width)
+      // callback: myCallback,
+      range: [
+        '0px    to 410px  = portrait.css',
+        '410px to 810px = panorama.css',
+        '810px to 2540px = panorama.css',
+        '2540px         = panorama.css'
+      ]
+    };
+  </script>
+  <script type="text/javascript" src="adapt.min.js"></script>
 </head>
 <body>
   <div id="map" class="fullsize">loading citymap ...</div>
