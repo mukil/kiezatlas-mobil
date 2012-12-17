@@ -95,6 +95,11 @@ html, body {
   background: transparent;
 }
 
+.map-title-link {
+  position: absolute;
+  top: 0px;
+}
+
 a.topic-name {
   color: #000;
 }
@@ -114,7 +119,7 @@ a.topic-name {
 ul.ka-select li {
   padding: 10px; padding-left: 20px;
   list-style: none; font-weight: bold;
-  border-bottom: 1px #388fd0 solid;
+  border-bottom: 1px solid #FC3;
   cursor: pointer;
 }
 

@@ -13,7 +13,7 @@
  * @modified  02.July 2012
  */
 
-var SERVER_URL = "http://m.kiezatlas.de";
+var SERVER_URL = "http://m.kiezatlas.de/";
   // var SERVER_URL = "http://localhost:8080/kiezatlas";
 var ICONS_URL = "http://www.kiezatlas.de/client/icons/"; // to be used by all icons if not relative to this folder
 var IMAGES_URL = "http://www.kiezatlas.de/client/images/";
@@ -22,7 +22,7 @@ var IMAGES_URL = "http://www.kiezatlas.de/client/images/";
 // var alternative_items = [];
 // var lastStreetName = "";
 // permalink-states
-var baseUrl = SERVER_URL + "/ehrenamt/";
+var baseUrl = SERVER_URL;
   // baseUrl = "http://localhost/smartatlas/";
 var permaLink = "";
 var linkParams = [];
@@ -30,160 +30,252 @@ var linkParams = [];
 // var debugUI = false;
 
 var kiezatlas = new function() {
-  // 
-  this.mapTopics = undefined;
-  this.workspaceCriterias = undefined;
-  this.cityMapId = undefined;
-  this.workspaceId = undefined;
-  this.defaultMapCenter = undefined;
-  this.markersBounds = undefined; // L.LatLngBounds Object
-  this.locationCircle = undefined; // L.Circle () if already set once..
-  // yet unused: this.selectedCriteria = 0;
-  // this.selectedTopic = undefined;
-  this.mapLayer = undefined;
-  this.map = undefined; // L.Map();
-  // 
-  this.serverUrl = undefined;
-  this.serviceUrl = undefined;
-  this.iconsFolder = undefined;
-  this.imagesFolder = undefined;
-  this.markers = undefined; // arrray of L.Marker Objects
-  // 
-  this.LEVEL_OF_DETAIL_ZOOM = 15; // the map focus when a mapinternal infoWindow is rendered
-  this.LEVEL_OF_STREET_ZOOM = 14; // the map focus when a mapinternal infoWindow is rendered
-  this.LEVEL_OF_KIEZ_ZOOM = 13;
-  this.LEVEL_OF_DISTRICT_ZOOM = 12;
-  this.LEVEL_OF_CITY_ZOOM = 11;
-  //
-  this.layer = undefined;
-  //
-  this.historyApiSupported = window.history.pushState;
-  this.panoramaOrientation = undefined; // gui helper flag
-  this.myScroll = undefined; // iScroll reference
-  
-  this.renderSite = function () {
-    // add button for explicit geolocation-moves
-    var locateButton = '<a class="leaflet-control-zoom-loc" href="#" title="Your Location"></a>';
-    var moreButton = '<a id="go-more" title="Bezirksauswahl" alt="Bezirksauswahl"'
-      + 'href="#"></a>';
-    // register handlers
-    kiezatlas.map.on('locationfound', kiezatlas.onLocationFound);
-    kiezatlas.map.on('locationerror', kiezatlas.onLocationError);
-    jQuery(locateButton).insertBefore(".leaflet-control-zoom-in");
-    jQuery(moreButton).insertBefore(".leaflet-control-zoom-loc");
-    jQuery(".leaflet-control-zoom-loc").click(kiezatlas.getUsersLocation);
     // 
-    jQuery('a#go-more').click(kiezatlas.showKiezatlasControl);
-    jQuery(window).resize(kiezatlas.handleOrientationChange);
-    // attempting to hide addressbar on android webkit browsers
-    kiezatlas.hideAddressBarThroughScrolling();
-  }
-  
-  this.executeBrowserSpecificCrap = function () {
-    // ### 
-    var head = document.getElementsByTagName('head')[0];
-    var style = document.createElement('style');
-    if (navigator.userAgent.indexOf('Fennec') != -1) {
-      style.innerHTML = '@media only screen { #top-button { display: none !important; } '
-        + '#go-more { background-position: 30px 10px; } }';
-    } else if (navigator.userAgent.indexOf('WebKit') != -1 && navigator.userAgent.indexOf('Android') != -1) {
-      style.innerHTML = '@media only screen { #go-more { background-position: 30px 12px !important;} }';
-    } else if (navigator.userAgent.indexOf('Opera') != -1) {
-      style.innerHTML = '@media only screen { #go-more { background-position: 30px 12px !important;} }';
-    }
-    head.appendChild(style);
-  }
-  
-  this.loadCityMap = function (mapId, workspaceId) {
-    kiezatlas.cityMapId = mapId;
-    kiezatlas.workspaceId = workspaceId;
-    if (kiezatlas.markers != undefined) {
-      kiezatlas.clearMarkers();
-    }
-    jQuery("img.loading").css("display", "block");
-    // console.log("showing loading bar => " + jQuery("img.loading").css("display"));
-    kiezatlas.loadCityMapTopics(mapId, workspaceId, function () {
-      kiezatlas.setupLeafletMarkers();
-      kiezatlas.setToCurrentBounds();
-      kiezatlas.getUsersLocation();
-    });
-    // ### FIXMEs mvoe GUI related manipulations into guiSetup/renderFunctions
-    kiezatlas.closeInfoContainer(); // close info and  show nav
+    this.publishedMaps = new Array();
+    this.mapTopics = undefined;
+    this.workspaceCriterias = undefined;
+    this.cityMapId = undefined;
+    this.workspaceId = undefined;
+    this.defaultMapCenter = undefined;
+    this.markersBounds = undefined; // L.LatLngBounds Object
+    this.locationCircle = undefined; // L.Circle () if already set once..
+    // yet unused: this.selectedCriteria = 0;
+    // this.selectedTopic = undefined;
+    this.mapLayer = undefined;
+    this.map = undefined; // L.Map();
     // 
-    if (cityMapEhrenamtId != undefined && cityMapEventId != undefined) {
-      if (kiezatlas.cityMapId == cityMapEhrenamtId) {
-        jQuery("#go-do").addClass("selected");
-        jQuery("#go-event").removeClass("selected");
-      } else if (kiezatlas.cityMapId == cityMapEventId) {
-        jQuery("#go-event").addClass("selected");
-        jQuery("#go-do").removeClass("selected");
-      }
-    }
-    // initiate current citymap state
-    // var newLink = baseUrl + "?map=" + mapId;
-    // kiezatlas.pushHistory({ "name": "loaded", "parameter": [ mapId, workspaceId ] }, newLink);
-    kiezatlas.hideKiezatlasControl();
-  }
-
-  this.loadCityMapTopics = function (mapId, workspaceId, handler) {
-    var url = baseUrl + "proxies/getCityMap.php?mapId="+mapId+"&workspaceId="+workspaceId;
-    var body = '{"method": "getMapTopics", "params": ["' + mapId+ '" , "' + workspaceId + '"]}';
-    jQuery.ajax({
-      type: "GET", async: false,
-      // data: body, 
-      url: url, dataType: 'json',
-      beforeSend: function(xhr) { 
-        xhr.setRequestHeader("Content-Type", "application/json") 
-      },
-      success: function(obj) {
-        kiezatlas.setMapTopics(obj);
-        handler();
-      },
-      error: function(x, s, e) {
-        throw new Error("Error while loading city-map. Message: " + JSON.stringify(x));
-      }
-    });
-  }
-
-  this.info = function(id) {
-    kiezatlas.loadCityObjectInfo(id, kiezatlas.renderInfo);
-    // ### assuming sucessesfull loadCityObjectInfo-call and non-rotating topic ids in cityMap ..
-    // var newLink = baseUrl + "map/" + kiezatlas.cityMapId + "/p/" + id;
-    // kiezatlas.pushHistory({ "name" : "info", "parameter" : id }, newLink);
-  }
-
-  this.loadCityObjectInfo = function (topicId, renderFunction) {
-    var url = baseUrl + "proxies/getGeoObjectInfo.php?topicId="+topicId;
-    // var body = '{"method": "getGeoObjectInfo", "params": ["' + topicId+ '"]}';
-    kiezatlas.showDetailsProgressBar();
+    this.serverUrl = undefined;
+    this.serviceUrl = undefined;
+    this.iconsFolder = undefined;
+    this.imagesFolder = undefined;
+    this.markers = undefined; // arrray of L.Marker Objects
     // 
-    jQuery.ajax({
-      type: "GET", async: false,
-      // data: body, 
-      url: url, dataType: 'json',
-      beforeSend: function(xhr) { 
-        xhr.setRequestHeader("Content-Type", "application/json");
-      },
-      success: function(obj) {
-        // console.log('loaded \"' + obj.result.name + '\"');
-        renderFunction(obj.result);
-      },
-      error: function(x, s, e) {
-        throw new Error('ERROR: detailed information on this point could not be loaded. please try again. ' + x);
-      }
-    });
-  }
+    this.LEVEL_OF_DETAIL_ZOOM = 15; // the map focus when a mapinternal infoWindow is rendered
+    this.LEVEL_OF_STREET_ZOOM = 14; // the map focus when a mapinternal infoWindow is rendered
+    this.LEVEL_OF_KIEZ_ZOOM = 13;
+    this.LEVEL_OF_DISTRICT_ZOOM = 12;
+    this.LEVEL_OF_CITY_ZOOM = 11;
+    //
+    this.layer = undefined;
+    //
+    this.historyApiSupported = window.history.pushState;
+    this.panoramaOrientation = undefined; // gui helper flag
+    this.myScroll = undefined; // iScroll reference
+
+    this.renderSite = function () {
+        // add button for explicit geolocation-moves
+        var locateButton = '<a class="leaflet-control-zoom-loc" href="#" title="Zu Ihrem jetzigen Standort"></a>';
+        // var moreButton = '<a id="go-more" title="Stadtplanauswahl" alt="Stadtplanauswahl"'
+          + 'href="#">Stadtplanauswahl</a>';
+        // register handlers
+        kiezatlas.map.on('locationfound', kiezatlas.onLocationFound);
+        kiezatlas.map.on('locationerror', kiezatlas.onLocationError);
+        jQuery(locateButton).insertBefore(".leaflet-control-zoom-in");
+        // jQuery(moreButton).insertBefore("#go-do");
+        // jQuery("#navigation").append(moreButton);
+        jQuery(".leaflet-control-zoom-loc").click(kiezatlas.getUsersLocation);
+        // 
+        jQuery('a#go-more').click(kiezatlas.showKiezatlasMaps);
+        // jQuery('#kiezatlas-control').click(kiezatlas.hideKiezatlasControl);
+        jQuery(window).resize(kiezatlas.handleOrientationChange);
+        // attempting to hide addressbar on android webkit browsers
+        kiezatlas.hideAddressBarThroughScrolling();
+    }
   
-  this.showDetailsProgressBar = function() {
-    jQuery('#scroller').empty();
-    var img = '<div id="loading-area"><img src="css/pacman.gif" class="loading">&nbsp;o0( ... data )</div>';
-    kiezatlas.showInfoContainer();
-    jQuery('#info-container').append(img);
-  }
+    this.executeBrowserSpecificCrap = function () {
+        // ### 
+        var head = document.getElementsByTagName('head')[0];
+        var style = document.createElement('style');
+        if (navigator.userAgent.indexOf('Fennec') != -1) {
+          style.innerHTML = '@media only screen { #top-button { display: none !important; } '
+            + '#go-more { background-position: 30px 10px; } }';
+        } else if (navigator.userAgent.indexOf('WebKit') != -1 && navigator.userAgent.indexOf('Android') != -1) {
+          style.innerHTML = '@media only screen { #go-more { background-position: 30px 12px !important;} }';
+        } else if (navigator.userAgent.indexOf('Opera') != -1) {
+          style.innerHTML = '@media only screen { #go-more { background-position: 30px 12px !important;} }';
+        }
+        head.appendChild(style);
+    }
   
-  this.hideDetailsProgressBar = function() {
-    jQuery("#loading-area").remove();
-  }
+    this.loadCityMap = function (mapId, workspaceId) {
+        kiezatlas.cityMapId = mapId;
+        kiezatlas.workspaceId = workspaceId;
+        if (kiezatlas.markers != undefined) {
+            kiezatlas.clearMarkers();
+        }
+        jQuery("img.loading").css("display", "block");
+        // console.log("showing loading bar => " + jQuery("img.loading").css("display"));
+        kiezatlas.loadCityMapTopics(mapId, workspaceId, function () {
+            kiezatlas.setupLeafletMarkers();
+            kiezatlas.setToCurrentBounds();
+            kiezatlas.getUsersLocation();
+        });
+        // ### FIXMEs mvoe GUI related manipulations into guiSetup/renderFunctions
+        kiezatlas.closeInfoContainer(); // close info and  show nav
+        /**
+        if (cityMapEhrenamtId != undefined && cityMapEventId != undefined) {
+            if (kiezatlas.cityMapId == cityMapEhrenamtId) {
+                jQuery("#go-do").addClass("selected");
+                jQuery("#go-event").removeClass("selected");
+            } else if (kiezatlas.cityMapId == cityMapEventId) {
+                jQuery("#go-event").addClass("selected");
+                jQuery("#go-do").removeClass("selected");
+            }
+        } **/
+        // initiate current citymap state
+        // var newLink = baseUrl + "?map=" + mapId;
+        // kiezatlas.pushHistory({ "name": "loaded", "parameter": [ mapId, workspaceId ] }, newLink);
+        // kiezatlas.hideKiezatlasControl();
+    }
+
+    this.loadCityMapTopics = function (mapId, workspaceId, handler) {
+        var url = baseUrl + "proxies/getCityMap.php?mapId="+mapId+"&workspaceId="+workspaceId;
+        var body = '{"method": "getMapTopics", "params": ["' + mapId+ '" , "' + workspaceId + '"]}';
+        jQuery.ajax({
+            type: "GET", async: false,
+                // data: body, 
+                url: url, dataType: 'json',
+                beforeSend: function(xhr) { 
+                xhr.setRequestHeader("Content-Type", "application/json") 
+            },
+            success: function(obj) {
+                kiezatlas.setMapTopics(obj);
+                handler();
+            },
+            error: function(x, s, e) {
+                throw new Error("Error while loading city-map. Message: " + JSON.stringify(x));
+            }
+        });
+    }
+
+     /** a get and show method implemented as
+      *  an asynchronous call which renders the html directly into the main window when the result has arrived  **/
+    this.getPublishedMobileCityMaps = function(renderOption) {
+        var url = baseUrl + "proxies/getPublishedMobileMaps.php";
+        var body = '{"method": "getMobileCityMaps", "params": [""]}';
+        jQuery.ajax({
+            type: "POST", url: url, data: body,
+        beforeSend: function(xhr) {xhr.setRequestHeader("Content-Type", "application/json")},
+        dataType: 'json',
+            success: function(obj) {
+                console.log("found the following mobile city maps")
+                // console.log(obj.result.maps)
+                kiezatlas.publishedMaps = obj.result.maps;
+                kiezatlas.setTitleMapLink(kiezatlas.cityMapId);
+                console.log("renderOption: " + renderOption);
+                if (renderOption === "show") kiezatlas.showKiezatlasMaps();
+            }, // end of success handler
+            error: function(x, s, e){
+                console.log("Ups, Sorry!", "Bei der Anfrage nach mobilen Stadtpl&auml;nen"
+                    + " ist ein Übertragungsfehler aufgetreten. Bitte versuchen Sie es noch einmal.")
+            }
+        });
+    }
+
+    this.setTitleMapLink = function(cityMapId) {
+        $(".map-title-link").remove();
+        var cityMapName = "";
+        if (cityMapId != undefined) {
+            for (i=0; i<kiezatlas.publishedMaps.length; i++) {
+                var map = kiezatlas.publishedMaps[i];
+                if (cityMapId == map['id']) {
+                    cityMapName = map['name'];
+                }
+            }
+            $("#navigation").append("<a href=\"http://m.kiezatlas.de/?mapId="+ kiezatlas.cityMapId
+                +"&workspaceId="+ kiezatlas.workspaceId +"\" class=\"map-title-link\">"+ cityMapName + "</a>");
+        }
+    }
+
+    this.showKiezatlasMaps = function () {
+        // if ($("#kiezatlas-control").length > 0) return undefined;
+        // console.log($("#kiezatlas-control"));
+        // 
+        // jQuery('a#go-more').click(kiezatlas.hideKiezatlasControl);
+        // quick hack providing a berlin district-selection for a city wide map
+        var kacontrol = jQuery("#kiezatlas-control");
+        var selectList = '<ul class="ka-select">';
+        kacontrol.html(selectList)
+        var kalist = $(".ka-select");
+            for (i=0; i < kiezatlas.publishedMaps.length; i++) {
+                var mobileMap = kiezatlas.publishedMaps[i];
+                kalist.append("<li class=\"map-button\" id=\""+ mobileMap.id +"\">"+ mobileMap.name +"</li>");
+            }
+            // selectList += '</ul>';
+        $(".map-button").click(kiezatlas.selectCityMap);
+        // console.log("toggling kiezatlas listing");
+        kacontrol.toggle("fast");
+        /* kacontrol.click(function (event) {
+            event.stopPropagation();
+            kiezatlas.hideKiezatlasControl();
+        }); **/
+        // 
+        // jQuery(".map-button").click(kiezatlas.selectCityMap);
+        // kiezatlas.closeInfoContainer();
+    }
+
+    this.selectCityMap = function (e) {
+        var cityMapId = e.target.id;
+        for (i=0; i<kiezatlas.publishedMaps.length; i++) {
+            var map = kiezatlas.publishedMaps[i];
+            if (cityMapId == map['id']) {
+                if (map['workspaceId'] == undefined) {
+                    throw new Error("Der Stadtplan konnte nicht geladen werden, es ist ein Fehler in der Konfiguration"
+                        + " der Stadtpl&auml;ne aufgetreten. Bitte versuchen Sie es erneut in dem Sie die aktuelle "
+                        + "Seite der Anwendung neu laden. Falls diese Fehlermeldung erneut auftritt bitte setzen Sie "
+                        + "uns davon in Kenntniss, schicken Sie Bitte den aktuellen Link (aus der Adressleiste) des "
+                        + "Fehlers an mobile@kiezatlas.de damit wir das Problem beheben k&ouml;nnen. \r\n"
+                        + "Vielen herzlichen Dank f&uuml;r Ihre Unterst&uuml;tzung, Ihr KiezAtlas Team.");
+                }
+                kiezatlas.loadCityMap(cityMapId, map['workspaceId']);
+                kiezatlas.setTitleMapLink(cityMapId);
+                var newLink = baseUrl + "?mapId=" + cityMapId + "&workspaceId="+ map['workspaceId'];
+                kiezatlas.pushHistory({ "name" : "map-select", "parameter" : cityMapId }, newLink);
+                kiezatlas.hideKiezatlasControl();
+                break;
+            }
+        }
+    }
+
+    this.info = function(id) {
+        kiezatlas.loadCityObjectInfo(id, kiezatlas.renderInfo);
+        // ### assuming sucessesfull loadCityObjectInfo-call and non-rotating topic ids in cityMap ..
+        // var newLink = baseUrl + "map/" + kiezatlas.cityMapId + "/p/" + id;
+        // kiezatlas.pushHistory({ "name" : "info", "parameter" : id }, newLink);
+    }
+
+    this.loadCityObjectInfo = function (topicId, renderFunction) {
+        var url = baseUrl + "proxies/getGeoObjectInfo.php?topicId="+topicId;
+        // var body = '{"method": "getGeoObjectInfo", "params": ["' + topicId+ '"]}';
+        kiezatlas.showDetailsProgressBar();
+        // 
+        jQuery.ajax({
+            type: "GET", async: false,
+                // data: body, 
+                url: url, dataType: 'json',
+                beforeSend: function(xhr) { 
+                xhr.setRequestHeader("Content-Type", "application/json");
+            },
+            success: function(obj) {
+                // console.log('loaded \"' + obj.result.name + '\"');
+                renderFunction(obj.result);
+            },
+            error: function(x, s, e) {
+                throw new Error('ERROR: detailed information on this point could not be loaded. please try again. ' + x);
+            }
+        });
+    }
+  
+    this.showDetailsProgressBar = function() {
+        jQuery('#scroller').empty();
+        var img = '<div id="loading-area"><img src="css/pacman.gif" class="loading">&nbsp;o0( ... data )</div>';
+        kiezatlas.showInfoContainer();
+        jQuery('#info-container').append(img);
+    }
+  
+    this.hideDetailsProgressBar = function() {
+        jQuery("#loading-area").remove();
+    }
 
   this.renderInfo = function (topic) {
     // console.log(topic);
@@ -283,7 +375,7 @@ var kiezatlas = new function() {
             propertyList += '<b>' + value + '</b>&nbsp;';
           } else if (topic.properties[i].name == "Webpage") {
             // label = '';
-            value = kiezatlas.makeEhrenamtsLink(value, value);
+            value = kiezatlas.makeWebpageLink(value, value);
             // label + 
             propertyList += '<b>' + value + '</b>&nbsp;';
             // propertyList += '<p><i class="cats">Kategorien:</i>&nbsp;';
@@ -531,7 +623,7 @@ var kiezatlas = new function() {
     var notificationDialog = '<div id="message" onclick="kiezatlas.closeNotificationDialog()" class="notification">'
       + '<div id="content">Die Abfrage ihres aktuellen Standorts wurde erfolgreich zur&uuml;ckgewiesen. '
         + 'Mit dem folgenden Link bieten wir ihnen die M&ouml;glichkeit '
-        + '<a href="javascript:kiezatlas.showKiezatlasControl()">einen der 12 Berliner Stadtbezirke direkt '
+        + '<a href="javascript:kiezatlas.showKiezatlasMaps()">einen der 12 Berliner Stadtbezirke direkt '
         + 'anzuw&auml;hlen.</a>'
       + '</div></div>';
     jQuery("#map").append(notificationDialog);
@@ -541,37 +633,6 @@ var kiezatlas = new function() {
     jQuery("#message").remove();
   }
 
-  this.showKiezatlasControl = function () {
-    // 
-    jQuery('a#go-more').click(kiezatlas.hideKiezatlasControl);
-    // quick hack providing a berlin district-selection for a city wide map
-    var kacontrol = jQuery("#kiezatlas-control");
-    // 
-    var selectList = '<ul class="ka-select">';
-      selectList += '<li id="chbw" class="district-button">Charlottenburg-Wilmersdorf</li>';
-      selectList += '<li id="fkreuz" class="district-button">Friedrichshain-Kreuzberg</li>';
-      selectList += '<li id="lichtenberg" class="district-button">Lichtenberg (Hohensch&ouml;nhausen)</li>';
-      selectList += '<li id="marzahn" class="district-button">Marzahn-Hellersdorf</li>';
-      selectList += '<li id="mitte" class="district-button">Mitte (Tiergarten, Wedding)</li>';
-      selectList += '<li id="neukoelln" class="district-button">Neuk&ouml;lln</li>';
-      selectList += '<li id="pankow" class="district-button">Pankow (Prenzlauer Berg, Wei&szlig;ensee)</li>';
-      selectList += '<li id="reinickendorf" class="district-button">Reinickendorf</li>';
-      selectList += '<li id="spandau" class="district-button">Spandau</li>';
-      selectList += '<li id="steglitz" class="district-button">Steglitz-Zehlendorf</li>';
-      selectList += '<li id="tempelhof" class="district-button">Tempelhof-Sch&ouml;neberg</li>';
-      selectList += '<li id="treptow" class="district-button">Treptow-K&ouml;penick</li>';
-    selectList += '</ul>';
-    kacontrol.html(selectList);
-    kacontrol.show("fast");
-    kacontrol.click(function (event) {
-      event.stopPropagation();
-      kiezatlas.hideKiezatlasControl();
-    });
-    // 
-    jQuery(".district-button").click(kiezatlas.focusDistrict);
-    kiezatlas.closeInfoContainer();
-  }
-  
   this.focusDistrict = function(e) {
     var districtId = e.target.id;
     // 
@@ -617,7 +678,8 @@ var kiezatlas = new function() {
   }
 
   this.hideKiezatlasControl = function () {
-    jQuery('a#go-more').click(kiezatlas.showKiezatlasControl);
+    console.log("press hide kiezatlas-control")
+    // jQuery('a#go-more').click(kiezatlas.showKiezatlasMaps);
     jQuery("#kiezatlas-control").hide();
   }
 
