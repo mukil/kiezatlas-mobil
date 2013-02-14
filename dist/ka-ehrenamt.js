@@ -176,7 +176,7 @@ var kiezatlas = new function() {
   
   this.showDetailsProgressBar = function() {
     jQuery('#scroller').empty();
-    var img = '<div id="loading-area"><img src="css/pacman.gif" class="loading">&nbsp;o0( ... data )</div>';
+    var img = '<div id="loading-area"><img src="css/pacman.gif" class="loading"></div>';
     kiezatlas.showInfoContainer();
     jQuery('#info-container').append(img);
   }
