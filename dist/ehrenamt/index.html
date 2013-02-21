@@ -21,7 +21,7 @@
   <script src="jquery.min.js"></script>
   <script src="leaflet/dist/leaflet.js"></script>
   <!-- script src="iscroll.js"></script-->
-  <script src="ka-0.4.2.js"></script>
+  <script src="ka-ehrenamt.js"></script>
   <!-- script src="ka-SNAPSHOT.js"></script-->
 </head>
 <body>
@@ -49,17 +49,7 @@
     } **/
     kiezatlas.loadCityMap(cityMapEhrenamtId, workspaceEhrenamtId);
     // 
-    var cloudmadeUrl = 'http://{s}.tiles.mapbox.com/v3/kiezatlas.map-feifsq6f/{z}/{x}/{y}.png',
-      cloudmadeAttribution = "Tiles &copy; <a href='http://mapbox.com/'>MapBox</a> | " +
-        "Data &copy; <a href='http://www.openstreetmap.org/'>OpenStreetMap</a> and contributors, CC-BY-SA",
-      cloudmade = new L.TileLayer(cloudmadeUrl, {maxZoom: 18, attribution: cloudmadeAttribution});
-    // mapbox: "http://a.tiles.mapbox.com/v3/kiezatlas.map-feifsq6f/${z}/${x}/${y}.png",
-    //            attribution: "Tiles &copy; <a href='http://mapbox.com/'>MapBox</a> | " +
-    //            "Data &copy; <a href='http://www.openstreetmap.org/'>OpenStreetMap</a> " +
-    //            "and contributors, CC-BY-SA",
-    // osm: "http://b.tile.openstreetmap.de/tiles/osmde/"
-    //        attribution: 'Tile server sponsored by STRATO / <b>Europe only</b> / <a href="http://www.openstreetmap.de/germanstyle.html">About style</a>',
-    map.addLayer(cloudmade);
+    kiezatlas.loadMapTiles();
     // document.addEventListener('touchmove', function (e) { e.preventDefault(); }, false);
     // 
   </script>

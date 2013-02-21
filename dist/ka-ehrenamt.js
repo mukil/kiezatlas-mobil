@@ -75,8 +75,7 @@ var kiezatlas = new function() {
     // 
     jQuery('a#go-more').click(kiezatlas.showKiezatlasControl);
     jQuery(window).resize(kiezatlas.handleOrientationChange);
-    // attempting to hide addressbar on android webkit browsers
-    kiezatlas.hideAddressBarThroughScrolling();
+    jQuery(document).ready(kiezatlas.hideAddressBarThroughScrolling);
   }
   
   this.executeBrowserSpecificCrap = function () {
@@ -93,7 +92,37 @@ var kiezatlas = new function() {
     }
     head.appendChild(style);
   }
-  
+
+  this.loadMapTiles = function() {
+    var cloudmadeUrl = 'http://{s}.tiles.mapbox.com/v3/kiezatlas.map-feifsq6f/{z}/{x}/{y}.png',
+        cloudmadeAttribution = "Tiles &copy; <a href='http://mapbox.com/'>MapBox</a> | " +
+          "Data &copy; <a href='http://www.openstreetmap.org/'>OpenStreetMap</a> and contributors, CC-BY-SA",
+        cloudmade = new L.TileLayer(cloudmadeUrl, {maxZoom: 18, attribution: cloudmadeAttribution});
+      // mapbox: "http://a.tiles.mapbox.com/v3/kiezatlas.map-feifsq6f/${z}/${x}/${y}.png",
+      //            attribution: "Tiles &copy; <a href='http://mapbox.com/'>MapBox</a> | " +
+      //            "Data &copy; <a href='http://www.openstreetmap.org/'>OpenStreetMap</a> " +
+      //            "and contributors, CC-BY-SA",
+      // osm: "http://b.tile.openstreetmap.de/tiles/osmde/"
+      //        attribution: 'Tile server sponsored by STRATO / <b>Europe only</b> /
+      //  <a href="http://www.openstreetmap.de/germanstyle.html">About style</a>',
+      // TODO: render nice info message "Map tiles are loding ..."
+      cloudmade.on('loading', function(e) {
+          // is never fired... console.log('start loading tiles...' + e)
+      });
+      cloudmade.on('loaded', function(e) {
+          // is never fired.. console.log('loaded cloudmade layer...')
+      });
+      cloudmade.on('load', function(e) {
+          // is just fired when panning the first time out of our viewport, but strangely not on initiali tile-loading
+          // console.log("tilelayer loaded..")
+      });
+      cloudmade.on('tileload', function (e) { 
+          // console.log('loading tile ..')
+          // is often fired, but do we know how often for our current viewport? not yet, but maybe.
+      });
+      kiezatlas.map.addLayer(cloudmade);
+  }
+
   this.loadCityMap = function (mapId, workspaceId) {
     kiezatlas.cityMapId = mapId;
     kiezatlas.workspaceId = workspaceId;
@@ -234,12 +263,12 @@ var kiezatlas = new function() {
       kiezatlas.myScroll = null;
     }
     // 
-    kiezatlas.myScroll = new iScroll('info-container', { 
+    /** kiezatlas.myScroll = new iScroll('info-container', { 
       "momentum": true, "hScrollbar": false, "vScrollbar": true, 
       "hideScrollbar" : false, 
       "justScrolled": function () { jQuery("#top-button").show(); },
       "justReset": function () { jQuery("#top-button").hide(); }
-    });
+    });**/
     // 
     // jQuery("#info-container .title").click(kiezatlas.toggleInfoItem);
     kiezatlas.map.panTo(latLng);
@@ -248,31 +277,40 @@ var kiezatlas = new function() {
   this.showInfoContainer = function () {
     kiezatlas.closeNotificationDialog();
     // 
+    jQuery("#map").animate({ 'margin-top': 0 }, 200, 'linear', function(e){
+      jQuery("#navigation").hide();
+    });
     jQuery("#info-container").hide();
     jQuery("#top-button").hide();
     // general layout change
-    jQuery("#navigation").hide();
     jQuery(".leaflet-control-zoom.leaflet-control").css("margin-top", 0);
     // does calculation, and switchin gof css classes for the current layout
     kiezatlas.handleOrientationChange();
     // 
-    jQuery("#map").removeClass("fullsize");
+    // jQuery("#map").removeClass("fullsize");
+    jQuery("#map.portrait-height").animate({ height: '60%' }, 200);
     kiezatlas.map.invalidateSize();
     // 
     jQuery("#info-container").click(function (event) { event.stopPropagation(); });
+    jQuery("#info-container").animate({ opacity: '1.0' }, 200, 'linear');
     jQuery("#info-container").show();
+    kiezatlas.hideAddressBarThroughScrolling();
   }
 
   this.closeInfoContainer = function () {
-    jQuery("#navigation").show();
-    jQuery(".leaflet-control-zoom.leaflet-control").css("margin-top", 50);
+    jQuery("#navigation").show()
+    jQuery("#map").animate({ 'margin-top': 50 }, 300, 'linear', function(e){});
+    jQuery(".leaflet-control-zoom.leaflet-control").css("margin-top", 15);
     // does calculation, and switchin gof css classes for the current layout
     kiezatlas.handleOrientationChange();
     // change map size accordingly..
-    jQuery("#map").addClass("fullsize");
+    // jQuery("#map").addClass("fullsize");
     kiezatlas.map.invalidateSize();
+    jQuery("#map.portrait-height").animate({ height: '100%' }, 200, 'linear');
     // 
-    jQuery("#info-container").hide();
+    jQuery("#info-container").animate({ opacity: '0.0' }, 300, function(e){});
+    jQuery("#info-container").hide('slow');
+    kiezatlas.hideAddressBarThroughScrolling();
   }
   
   this.scrollInfoDown = function () {
@@ -355,8 +393,9 @@ var kiezatlas = new function() {
         }, marker);
       }
     }
-    console.log("map.setup => " + kiezatlas.markers.length + " leaflets for " + kiezatlas.mapTopics.result.topics.length
-      + " loaded topics");
+    // console.log("map.setup => " + kiezatlas.markers.length + 
+      // " leaflets for " + kiezatlas.mapTopics.result.topics.length
+      // + " loaded topics");
   }
   
   this.renderTitle = function (object) {
@@ -438,6 +477,8 @@ var kiezatlas = new function() {
   }
   
   this.onLocationFound = function(e) {
+    // the result of this event/function (setView) comes sometimes out of a sudden, much too late from users perspective
+    // console.log("onlocationfound..")
     var radius = e.accuracy / 2;
     if (kiezatlas.locationCircle != undefined) {
       kiezatlas.map.removeLayer(kiezatlas.locationCircle);
@@ -554,7 +595,7 @@ var kiezatlas = new function() {
       var nViewH = window.outerHeight;
       if (nViewH > nPageH) {
         nViewH = nViewH / window.devicePixelRatio;
-        $('body').css('height',nViewH + 'px');
+        $('body').css('height', nViewH + 'px');
       }
       window.scrollTo(0,1);
     }
