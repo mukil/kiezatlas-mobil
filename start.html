@@ -44,10 +44,11 @@
                         kiezatlas.updateMobileMapGUI(false)
                     } else if (fromPage.indexOf("citymaps-page") == -1) {
                         console.log(".. initializing citymap-page froim cityMapsPAge ...")
-                        kiezatlas.initializeMobileCityMapView()
+                        kiezatlas.renderMobileCityMapView()
                     }
 
                 } else if (toPage.indexOf("citymaps-list") != -1) {
+
                     if (kiezatlas.markers != undefined) kiezatlas.clearMarkers() // clean up on the way back(tothelist)
                     // console.log("load citymaps-listing..")
                     $(".my-title").html("Berliner Kiezatlas");
@@ -58,6 +59,9 @@
                         console.log("re-rendering citymaps-listing.." + kiezatlas.publishedMaps.length)
                         kiezatlas.renderMobileCityMapList(kiezatlas.publishedMaps)
                     }
+
+                } else if (toPage.indexOf("info") != -1) {
+                    console.log("going to details page..")
                 }
             })
 
@@ -119,7 +123,12 @@
         </div>
 
         <div id="infoo-area" data-role="content">
-            <p>Info-Layer..</p>
+            <p>
+                Bitte gehen Sie &uuml;ber die <a href="#citymaps-list">Stadtplanansichten</a> zu den jew. Detailinfos. 
+                Unsere Anwendung unterst&uuml;tzt aktuell noch nicht das sog. "Deep-Linking" (direktes ansteuern) 
+                von einzelnen Datens&auml;tzen in allen Stadtpl&auml;nen.<br/><br/>
+                Bitte entschuldigen Sie die Umst&auml;nde. <br/><br/> Ihr KiezAtlas-Team
+            </p>
         </div-->
 
     </div>

@@ -14,7 +14,7 @@
  */
 
 var SERVER_URL = "http://m.kiezatlas.de/";
-  // var SERVER_URL = "http://localhost:8080/kiezatlas";
+    // var SERVER_URL = "http://localhost:8080/kiezatlas/";
 var ICONS_URL = "http://www.kiezatlas.de/client/icons/"; // to be used by all icons if not relative to this folder
 var IMAGES_URL = "http://www.kiezatlas.de/client/images/";
 // ui-state
@@ -23,7 +23,7 @@ var IMAGES_URL = "http://www.kiezatlas.de/client/images/";
 // var lastStreetName = "";
 // permalink-states
 var baseUrl = SERVER_URL;
-  // baseUrl = "http://localhost/smartatlas/";
+  // baseUrl = "http://localhost/kiezatlas-mobil/";
 var permaLink = "";
 var linkParams = [];
 // debug-state
@@ -33,6 +33,7 @@ var kiezatlas = new function() {
     // 
     this.publishedMaps = new Array();
     this.mapTopics = undefined;
+    this.mapTopic = undefined;
     this.workspaceCriterias = undefined;
     this.cityMapId = undefined;
     this.workspaceId = undefined;
@@ -96,7 +97,86 @@ var kiezatlas = new function() {
         }
         head.appendChild(style);
     }
-  
+
+    this.renderMobileCityMapList = function (obj) {
+        obj.sort(kiezatlas.topicSort); // alphabetical ascending
+        $("ul.citymap-listing").empty()
+        $("ul.citymap-listing").append('<li data-role="list-divider" '
+            + ' data-theme="e" id="all-citymaps">Alle Stadtpl&auml;ne</li>')
+        for (i = 0; i < obj.length; i++) {
+            var element = obj[i]
+            var item = $('<li id="'+ element.id +'">') // href="#citymaps-page"
+            var link = $('<a id="'+ element.id +'" data="'+ element.workspaceId +'">'+ element.name +'</a>')
+            item.bind('vclick', function(e) {
+                var elementId = ""+ e.target.parentElement.parentElement.parentElement.id + "";
+                var workspaceId = $(e.target).attr("data")
+                kiezatlas.cityMapId = elementId
+                kiezatlas.workspaceId = workspaceId
+                // maybe navigate to: 
+                $.mobile.navigate( '#citymaps-page?query=;&mapId=' 
+                    +kiezatlas.cityMapId+ '&wsId=' +kiezatlas.workspaceId, 
+                    { info: "info about the #foo hash", mapName: element.name, transition: "flow", showLoadMsg: true }
+                )
+                /** $.mobile.changePage('#citymaps-page', {
+                    transition: "flow", showLoadMsg: true,
+                    reverse: false, showLoadMsg: true,
+                    changeHash: true
+                });**/
+            })
+            item.append(link)
+            $("ul.citymap-listing").append(item)
+        }
+        $("ul.citymap-listing").listview( "refresh")
+    }
+
+    this.renderMobileCityMapView = function () {
+        // set tmp page title
+        kiezatlas.setMobileViewTitle("Lade Stadtplanansicht.. ");
+        // check if, and if not, initialize leaflet
+        if (kiezatlas.map == undefined) {
+            // console.log(" map is not initialized.. initializing..")
+            kiezatlas.setMap(new L.Map('map'))
+        }
+        // update model
+        kiezatlas.loadCityObjectInfo(kiezatlas.cityMapId)
+        console.log(kiezatlas.mapTopic)
+        kiezatlas.loadCityMapTopics(kiezatlas.cityMapId, kiezatlas.workspaceId);
+        kiezatlas.setupLeafletMarkers(true) // all L.LatLng()s are constructed here
+        kiezatlas.updateMobileMapGUI(true)
+        // ask for users location
+        kiezatlas.getUsersLocation()
+    }
+
+    this.updateMobileMapGUI = function (resetBounds) {
+        // update gui
+        $("#map").height($(window).innerHeight())
+        kiezatlas.map.invalidateSize()
+        if (resetBounds) {
+            kiezatlas.setToCurrentBounds()
+            kiezatlas.loadMapTiles()
+            // set new page titles to citymap name
+            kiezatlas.setMobileViewTitle(kiezatlas.mapTopic.name)
+            window.document.title = kiezatlas.mapTopic.name
+        }
+    }
+
+    this.setMobileViewTitle = function(newTitle) {
+        $(".my-title").html(newTitle)
+    }
+
+    this.getURLParameter = function(paramName) {
+        var searchString = window.location.href.substring(1),
+            i, val, params = searchString.split("&");
+
+        for (i=0;i<params.length;i++) {
+            val = params[i].split("=");
+            if (val[0] == paramName) {
+                return decodeURIComponent(val[1]);
+            }
+        }
+        return null;
+    }
+
     this.loadCityMap = function (mapId, workspaceId) {
         kiezatlas.cityMapId = mapId;
         kiezatlas.workspaceId = workspaceId;
@@ -129,7 +209,7 @@ var kiezatlas = new function() {
     }
 
     this.loadCityMapTopics = function (mapId, workspaceId, handler) {
-        var url = baseUrl + "proxies/getCityMap.php?mapId="+mapId+"&workspaceId="+workspaceId;
+        var url = baseUrl + "../proxies/getCityMap.php?mapId="+mapId+"&workspaceId="+workspaceId;
         var body = '{"method": "getMapTopics", "params": ["' + mapId+ '" , "' + workspaceId + '"]}';
         jQuery.ajax({
             type: "GET", async: false,
@@ -140,7 +220,7 @@ var kiezatlas = new function() {
             },
             success: function(obj) {
                 kiezatlas.setMapTopics(obj);
-                handler();
+                if (handler != undefined) handler();
             },
             error: function(x, s, e) {
                 throw new Error("Error while loading city-map. Message: " + JSON.stringify(x));
@@ -148,21 +228,41 @@ var kiezatlas = new function() {
         });
     }
 
+    this.loadMapTiles = function() {
+        var cloudmadeUrl = 'http://{s}.tiles.mapbox.com/v3/kiezatlas.map-feifsq6f/{z}/{x}/{y}.png',
+            cloudmadeAttribution = "Tiles &copy; <a href='http://mapbox.com/'>MapBox</a> | " +
+              "Data &copy; <a href='http://www.openstreetmap.org/'>OpenStreetMap</a> and contributors, CC-BY-SA",
+            cloudmade = new L.TileLayer(cloudmadeUrl, {maxZoom: 18, attribution: cloudmadeAttribution});
+        // mapbox: "http://a.tiles.mapbox.com/v3/kiezatlas.map-feifsq6f/${z}/${x}/${y}.png",
+        //            attribution: "Tiles &copy; <a href='http://mapbox.com/'>MapBox</a> | " +
+        //            "Data &copy; <a href='http://www.openstreetmap.org/'>OpenStreetMap</a> " +
+        //            "and contributors, CC-BY-SA",
+        // osm: "http://b.tile.openstreetmap.de/tiles/osmde/"
+        //        attribution: 'Tile server sponsored by STRATO / <b>Europe only</b> /
+        //  <a href="http://www.openstreetmap.de/germanstyle.html">About style</a>',
+        // TODO: render nice info message "Map tiles are loding ..."
+        /** cloudmade.on('load', function(e) {
+          // is just fired when panning the first time out of our viewport, but strangely not on initiali tile-loading
+          console.log("tilelayer loaded.. could invaldate #maps size..")
+        }); **/
+        kiezatlas.map.addLayer(cloudmade);
+    }
+
+
      /** a get and show method implemented as
       *  an asynchronous call which renders the html directly into the main window when the result has arrived  **/
     this.getPublishedMobileCityMaps = function(renderOption) {
-        var url = baseUrl + "proxies/getPublishedMobileMaps.php";
+        var url = baseUrl + "../proxies/getPublishedMobileMaps.php";
         var body = '{"method": "getMobileCityMaps", "params": [""]}';
         jQuery.ajax({
-            type: "POST", url: url, data: body,
+            type: "POST", url: url, data: body, async: false,
         beforeSend: function(xhr) {xhr.setRequestHeader("Content-Type", "application/json")},
         dataType: 'json',
             success: function(obj) {
-                console.log("found the following mobile city maps")
+                // console.log("found the following mobile city maps")
                 // console.log(obj.result.maps)
                 kiezatlas.publishedMaps = obj.result.maps;
                 kiezatlas.setTitleMapLink(kiezatlas.cityMapId);
-                console.log("renderOption: " + renderOption);
                 if (renderOption === "show") kiezatlas.showKiezatlasMaps();
             }, // end of success handler
             error: function(x, s, e){
@@ -238,463 +338,327 @@ var kiezatlas = new function() {
     }
 
     this.info = function(id) {
-        kiezatlas.loadCityObjectInfo(id, kiezatlas.renderInfo);
-        // ### assuming sucessesfull loadCityObjectInfo-call and non-rotating topic ids in cityMap ..
-        // var newLink = baseUrl + "map/" + kiezatlas.cityMapId + "/p/" + id;
-        // kiezatlas.pushHistory({ "name" : "info", "parameter" : id }, newLink);
+        $("#infoo-area").html('<p class="content-body"></p>')
+        // used with jquerymobile
+        $.mobile.changePage( "#infoo", {
+            transition: "flow",
+            reverse: false, showLoadMsg: true,
+            changeHash: true
+        })
+        // fetch the data, and render it
+        kiezatlas.loadCityObjectInfo(id, kiezatlas.renderMobileInfoBody)
     }
 
     this.loadCityObjectInfo = function (topicId, renderFunction) {
-        var url = baseUrl + "proxies/getGeoObjectInfo.php?topicId="+topicId;
-        // var body = '{"method": "getGeoObjectInfo", "params": ["' + topicId+ '"]}';
-        kiezatlas.showDetailsProgressBar();
+        var url = baseUrl + "../proxies/getGeoObjectInfo.php?topicId="+topicId
+        // var body = '{"method": "getGeoObjectInfo", "params": ["' + topicId+ '"]}'
         // 
         jQuery.ajax({
             type: "GET", async: false,
                 // data: body, 
                 url: url, dataType: 'json',
-                beforeSend: function(xhr) { 
-                xhr.setRequestHeader("Content-Type", "application/json");
+                beforeSend: function(xhr) {
+                xhr.setRequestHeader("Content-Type", "application/json")
             },
             success: function(obj) {
-                // console.log('loaded \"' + obj.result.name + '\"');
+                console.log('loaded \"' + obj.result.name + '\" ' + (renderFunction == undefined))
+                kiezatlas.mapTopic = obj.result
+                if (renderFunction == undefined) return obj.result // what does this actually do, stupid!
                 renderFunction(obj.result);
             },
             error: function(x, s, e) {
-                throw new Error('ERROR: detailed information on this point could not be loaded. please try again. ' + x);
+                throw new Error('ERROR: detailed information on this point could not be loaded. please try again.' + x)
             }
-        });
-    }
-  
-    this.showDetailsProgressBar = function() {
-        jQuery('#scroller').empty();
-        var img = '<div id="loading-area"><img src="css/pacman.gif" class="loading">&nbsp;o0( ... data )</div>';
-        kiezatlas.showInfoContainer();
-        jQuery('#info-container').append(img);
-    }
-  
-    this.hideDetailsProgressBar = function() {
-        jQuery("#loading-area").remove();
+        })
     }
 
-  this.renderInfo = function (topic) {
-    // console.log(topic);
-    jQuery("#close-button").show();
-    jQuery("#down-button").show();
-    // 
-    var infoHeader = '<div id="info-table">';
-    infoHeader += '<h3 class="title">' + topic.name + '</h3></div>';
-    // infoHeader += '<a href="#" onclick="javascript:kiezatlas.scrollInfoDown()">||</a>';
-    var infoItem = "";
-    // 
-    var street = kiezatlas.getTopicAddress(topic);
-    var postalCode = kiezatlas.getTopicPostalCode(topic);
-    var cityName = kiezatlas.getTopicCity(topic);
-    var latLng = kiezatlas.getLatLng(topic);
-    // 
-    if (cityName == undefined) cityName = "Berlin"; // fixing the imported dataset from ehrenamtsnetz
-    if (cityName == " Berlin" || cityName == "Berlin") { // ### FIXME sloppy
-      var target = street + "%20" + postalCode + "%20" + cityName;
-      var publicTransportURL = "http://www.fahrinfo-berlin.de/fahrinfo/bin/query.exe/d?Z=" 
-        + target + "&REQ0JourneyStopsZA1=2&start=1";
-      var imageLink = '<a href="' + publicTransportURL + '" target="_blank">'
-        + '<img class="fahrinfo" src=\"' + kiezatlas.imagesFolder + 'fahrinfo.gif" border="0" hspace="20"/></a>';
-      infoItem = '<div id="info-item"><span class="content">' + street + ', ' + postalCode + ' ' 
-        + cityName + imageLink + '</span><br/>';
-    } else {
-      infoItem = '<div id="info-item">'
-        + '<span class="content">' + street + ', ' + postalCode + ' ' + cityName + '</span><br/>';
-    }
-    // stripping unwanted fields of the data container
-    topic = kiezatlas.stripFieldsContaining(topic, "LAT");
-    topic = kiezatlas.stripFieldsContaining(topic, "LONG");
-    topic = kiezatlas.stripFieldsContaining(topic, "Locked Geometry");
-    topic = kiezatlas.stripFieldsContaining(topic, "Forum / Aktivierung");
-    topic = kiezatlas.stripFieldsContaining(topic, "Image");
-    topic = kiezatlas.stripFieldsContaining(topic, "Icon");
-    topic = kiezatlas.stripFieldsContaining(topic, "YADE");
-    topic = kiezatlas.stripFieldsContaining(topic, "Name");
-    topic = kiezatlas.stripFieldsContaining(topic, "Description");
-    topic = kiezatlas.stripFieldsContaining(topic, "Timestamp");
-    topic = kiezatlas.stripFieldsContaining(topic, "OriginId");
-    topic = kiezatlas.stripFieldsContaining(topic, "Administrator Infos");
-    topic = kiezatlas.stripFieldsContaining(topic, "Address");
-    // topic = kiezatlas.stripFieldsContaining(topic, "Stichworte");
-    topic = kiezatlas.stripFieldsContaining(topic, "Stadt");
-    // remove set of categories..
-    // topic = kiezatlas.stripFieldsContaining(topic, "Zielgruppen");
-    // topic = kiezatlas.stripFieldsContaining(topic, "Einsatzbereiche");
-    // topic = kiezatlas.stripFieldsContaining(topic, "Merkmale");
-    // topic = kiezatlas.stripFieldsContaining(topic, "Bezirk");
-    // topic = kiezatlas.stripFieldsContaining(topic, "Kategorie");
-    // 
-    var propertyList = ''; //<table width="100%" cellpadding="2" border="0"><tbody>';
-    for (var i=0; i < topic.properties.length; i++) {
-      // build html for attributes to display for an informational object
-      if (topic.properties[i].label.indexOf("Sonstiges") != -1) {
-        // skipping: propertyList += '<p class="additionalInfoWhite">';
-      } else if (topic.properties[i].label.indexOf("Administrator") != -1) {
-        // skipping: propertyList += '<p class="additionalInfo">';
-      } else if (topic.properties[i].label == "Barrierefrei" && topic.properties[i].value == "") {
-        // skip rendering Barrierefrei-Field cause value was not set yet
-      } else if (topic.properties[i].value == "") {
-        // skip rendering label for empty value
-      } else {
-        propertyList +=  '<br/>' + topic.properties[i].label + ':&nbsp;';
-      }
-      if (topic.properties[i].type == 0) {
-        // DM Property Type Single Value
-        if (topic.properties[i].label.indexOf("Barrierefrei") == -1) {
-          // ordinary rendering for DM Property Type Single Value
-          propertyList += '<b>' + topic.properties[i].value + '</b>';
-        } else {
-          // special rendering for the "BARRIERFREE_ACCESS"-Property
-          if (topic.properties[i].value == "") {
-            // skip rendering Barrierefrei-Field cause value was not set yet
-          } else if (topic.properties[i].value == "Ja") {
-            propertyList += '<b>Ja Rollstuhlgerecht</b></p>';
-          } else if (topic.properties[i].value.indexOf("Eingeschr") != -1) {
-            propertyList += '<b>Eingeschr&auml;nkt Rollstuhlgerecht</b></p>';
-          } else if (topic.properties[i].value == "Nein") {
-            propertyList += '<b>Nicht Rollstuhlgerecht</b></p>';
-          } else {
-            propertyList +=  '<b>' + topic.properties[i].value + '</b><p/>';
-          }
-        }
-        // propertyList +=  '<p>' + topic.properties[i].name + ':&nbsp;<b>' + topic.properties[i].value + '</b><p/>';
-      } else {
-        // DM Property Type Multi Value
-        var stringValue = "";
-        propertyList += '';
-        for ( var k=0; k < topic.properties[i].values.length; k++ ) {
-          // 
-          value = topic.properties[i].values[k].name;
-          if (topic.properties[i].name == "Person") {
-            // label = 'Ansprechpartner:&nbsp;';
-            // label + 
-            propertyList += '<b>' + value + '</b>&nbsp;';
-          } else if (topic.properties[i].name == "Webpage") {
-            // label = '';
-            value = kiezatlas.makeWebpageLink(value, value);
-            // label + 
-            propertyList += '<b>' + value + '</b>&nbsp;';
-            // propertyList += '<p><i class="cats">Kategorien:</i>&nbsp;';
-          } else {
-            propertyList += '<b>' + value + '</b>&nbsp;';
-          }
-        }
-        propertyList += '<br/>';
-      }
-    }
-    infoItem += propertyList;
-    infoItem += "</p></div>";
-    // 
-    jQuery("#scroller").html(infoHeader);
-    jQuery("#scroller").append(infoItem);
-    //
-    // kiezatlas.showInfoContainer();
-    kiezatlas.hideDetailsProgressBar();
-    // 
-    if (kiezatlas.myScroll != undefined) {
-      kiezatlas.myScroll.destroy();
-      kiezatlas.myScroll = null;
-    }
-    // 
-    kiezatlas.myScroll = new iScroll('info-container', { 
-      "momentum": true, "hScrollbar": false, "vScrollbar": true, 
-      "hideScrollbar" : false, 
-      "justScrolled": function () { jQuery("#top-button").show(); },
-      "justReset": function () { jQuery("#top-button").hide(); }
-    });
-    // 
-    // jQuery("#info-container .title").click(kiezatlas.toggleInfoItem);
-    kiezatlas.map.panTo(latLng);
-  }
-
-  this.showInfoContainer = function () {
-    kiezatlas.closeNotificationDialog();
-    // 
-    jQuery("#info-container").hide();
-    jQuery("#top-button").hide();
-    // general layout change
-    jQuery("#navigation").hide();
-    jQuery(".leaflet-control-zoom.leaflet-control").css("margin-top", 0);
-    // does calculation, and switchin gof css classes for the current layout
-    kiezatlas.handleOrientationChange();
-    // 
-    jQuery("#map").removeClass("fullsize");
-    kiezatlas.map.invalidateSize();
-    // 
-    jQuery("#info-container").click(function (event) { event.stopPropagation(); });
-    jQuery("#info-container").show();
-  }
-
-  this.closeInfoContainer = function () {
-    jQuery("#navigation").show();
-    jQuery(".leaflet-control-zoom.leaflet-control").css("margin-top", 50);
-    // does calculation, and switchin gof css classes for the current layout
-    kiezatlas.handleOrientationChange();
-    // change map size accordingly..
-    jQuery("#map").addClass("fullsize");
-    kiezatlas.map.invalidateSize();
-    // 
-    jQuery("#info-container").hide();
-  }
-  
-  this.scrollInfoDown = function () {
-    kiezatlas.myScroll.scrollTo(0, 75, 200, true);
-    // jQuery("#top-button").show();
-  }
-  
-  this.scrollInfoTop = function () {
-    kiezatlas.myScroll.scrollTo(0, 0, 200, true);
-    // jQuery("#top-button").hide();
-  }
-
-  this.toggleInfoItem = function (e) {
-    var itemId = e.currentTarget.offsetParent.children[2].id;
-    jQuery('#'+itemId).toggle();
-  }
-
-  this.setupLeafletMarkers = function() {
-    // 
-    var KiezAtlasIcon = L.Icon.extend({
-      options: {
-        iconUrl: 'css/locationPointer.png',
-        shadowUrl: null, iconSize: new L.Point(40, 40), shadowSize: null,
-        iconAnchor: new L.Point(20, 14), popupAnchor: new L.Point(0, 4)
-      }
-    });
-    var myIcon = new KiezAtlasIcon();
-    // 
-    kiezatlas.markers = new Array(); // helper to keep the refs to all markes once added..
-    // 
-    for (var i = 0; i < kiezatlas.mapTopics.result.topics.length; i++) {
-      // get info locally
-      var topic = kiezatlas.mapTopics.result.topics[i];
-      var topicId = topic.id;
-      var marker = undefined;
-      var latlng = undefined;
-      var lng = topic.long;
-      var lat = topic.lat;
-      // sanity check..
-      var skip = false;
-      if (lat == 0.0 || lng == 0.0) {
-        skip = true;
-      } else if (lng < -180.0 || lng > 180.0) {
-        skip = true;
-      } else if (lat < -90.0 || lat > 90.0) {
-        skip = true;
-      } else if (isNaN(lat) || isNaN(lng)) {
-        skip = true;
-      }
-      if (!skip) {
-        latlng = new L.LatLng(parseFloat(lat), parseFloat(lng));
-      }
-      // 
-      if (latlng != undefined) {
-        var existingMarker = kiezatlas.getMarkerByLatLng(latlng);
-        if (existingMarker != null) {
-          marker = existingMarker;
-          // add our current, proprietary topicId to the marker-object
-          marker.options.topicId.push(topicId);
-          var previousContent = marker._popup._content;
-          marker.bindPopup(kiezatlas.renderTitle(topic) + previousContent);
-        } else {
-          marker = new L.Marker(latlng, { 'clickable': true , 'topicId': [topicId] }); // icon: myIcon
-          marker.bindPopup(kiezatlas.renderTitle(topic));
-        }
-        // add marker to map object
-        kiezatlas.map.addLayer(marker);
-        // reference each marker in kiezatlas.markers model
-        kiezatlas.markers.push(marker);
+    this.renderMobileInfoBody = function (topic) {
+        var infoHeader = '<div id="info-table">';
+            infoHeader += '<h3 class="title">' + topic.name + '</h3></div>';
+            // infoHeader += '<a href="#" onclick="javascript:kiezatlas.scrollInfoDown()">||</a>';
+        var infoItem = "";
         // 
-        marker.on('click', function (e) {
-          // 
-          this._popup.options.autoPan = true;
-          this._popup.options.maxWidth = 160;
-          this._popup.options.closeButton = true;
-          this.openPopup();
-          // 
-          // bubbles click handler consumed by onBubbleClick
-          // jQuery(".leaflet-popup-content-wrapper").click(kiezatlas.onBubbleClick);
-        }, marker);
-      }
+        var street = kiezatlas.getTopicAddress(topic);
+        var postalCode = kiezatlas.getTopicPostalCode(topic);
+        var cityName = kiezatlas.getTopicCity(topic);
+        var latLng = kiezatlas.getLatLng(topic);
+        // 
+        if (cityName == undefined) cityName = "Berlin"; // fixing the imported dataset from ehrenamtsnetz
+        if (cityName == " Berlin" || cityName == "Berlin") { // ### FIXME sloppy
+            var target = street + "%20" + postalCode + "%20" + cityName;
+            var publicTransportURL = "http://www.fahrinfo-berlin.de/fahrinfo/bin/query.exe/d?Z=" 
+                + target + "&REQ0JourneyStopsZA1=2&start=1";
+            var imageLink = '<a href="' + publicTransportURL + '" target="_blank"><img'
+                + ' class="fahrinfo" src=\"' + kiezatlas.imagesFolder + 'fahrinfo.gif" border="0" hspace="20"/></a>';
+            infoItem = '<div id="info-item"><span class="content">' + street + ', ' + postalCode + ' ' 
+                + cityName + imageLink + '</span><br/>';
+        } else {
+            infoItem = '<div id="info-item">'
+                + '<span class="content">' + street + ', ' + postalCode + ' ' + cityName + '</span><br/>';
+        }
+        // stripping unwanted fields of the data container
+        topic = kiezatlas.stripFieldsContaining(topic, "LAT");
+        topic = kiezatlas.stripFieldsContaining(topic, "LONG");
+        topic = kiezatlas.stripFieldsContaining(topic, "Locked Geometry");
+        topic = kiezatlas.stripFieldsContaining(topic, "Forum / Aktivierung");
+        topic = kiezatlas.stripFieldsContaining(topic, "Image");
+        topic = kiezatlas.stripFieldsContaining(topic, "Icon");
+        topic = kiezatlas.stripFieldsContaining(topic, "YADE");
+        topic = kiezatlas.stripFieldsContaining(topic, "Name");
+        topic = kiezatlas.stripFieldsContaining(topic, "Description");
+        topic = kiezatlas.stripFieldsContaining(topic, "Timestamp");
+        topic = kiezatlas.stripFieldsContaining(topic, "OriginId");
+        topic = kiezatlas.stripFieldsContaining(topic, "Administrator Infos");
+        topic = kiezatlas.stripFieldsContaining(topic, "Address");
+        // topic = kiezatlas.stripFieldsContaining(topic, "Stichworte");
+        topic = kiezatlas.stripFieldsContaining(topic, "Stadt");
+        // remove set of categories..
+        // topic = kiezatlas.stripFieldsContaining(topic, "Zielgruppen");
+        // topic = kiezatlas.stripFieldsContaining(topic, "Einsatzbereiche");
+        // topic = kiezatlas.stripFieldsContaining(topic, "Merkmale");
+        // topic = kiezatlas.stripFieldsContaining(topic, "Bezirk");
+        // topic = kiezatlas.stripFieldsContaining(topic, "Kategorie");
+        // 
+        var propertyList = ''; //<table width="100%" cellpadding="2" border="0"><tbody>';
+        for (var i=0; i < topic.properties.length; i++) {
+                // build html for attributes to display for an informational object
+            if (topic.properties[i].label.indexOf("Sonstiges") != -1) {
+                propertyList += '<p class="additionalInfoWhite">';
+            } else if (topic.properties[i].label.indexOf("Administrator") != -1) {
+                // skipping: propertyList += '<p class="additionalInfo">';
+            } else if (topic.properties[i].label == "Barrierefrei" && topic.properties[i].value == "") {
+                // skip rendering Barrierefrei-Field cause value was not set yet
+            } else if (topic.properties[i].value == "") {
+                // skip rendering label for empty value
+            } else {
+                propertyList +=  '<br/>' + topic.properties[i].label + ':&nbsp;';
+            }
+            // DM Property Type Single Value
+            if (topic.properties[i].type == 0) {
+                if (topic.properties[i].label.indexOf("Barrierefrei") == -1) {
+                    // ordinary rendering for DM Property Type Single Value
+                    propertyList += '<b>' + topic.properties[i].value + '</b>';
+                } else {
+                    // special al rendering for the "BARRIERFREE_ACCESS"-Property
+                    if (topic.properties[i].value == "") {
+                        // skip rendering Barrierefrei-Field cause value was not set yet
+                    } else if (topic.properties[i].value == "Ja") {
+                        propertyList += '<b>Ja Rollstuhlgerecht</b></p>';
+                    } else if (topic.properties[i].value.indexOf("Eingeschr") != -1) {
+                        propertyList += '<b>Eingeschr&auml;nkt Rollstuhlgerecht</b></p>';
+                    } else if (topic.properties[i].value == "Nein") {
+                        propertyList += '<b>Nicht Rollstuhlgerecht</b></p>';
+                    } else {
+                        propertyList +=  '<b>' + topic.properties[i].value + '</b></p>';
+                    }
+                }
+            // propertyList +=  '<p>' + topic.properties[i].name + ':&nbsp;<b>' + topic.properties[i].value + '</b><p/>';
+            } else {
+                // DM Property Type Multi Value
+                var stringValue = "";
+                propertyList += '';
+                for ( var k=0; k < topic.properties[i].values.length; k++ ) {
+                    // 
+                    value = topic.properties[i].values[k].name;
+                    if (topic.properties[i].name == "Person") {
+                        // label = 'Ansprechpartner:&nbsp;';
+                        // label + 
+                        propertyList += '<b>' + value + '</b>&nbsp;';
+                    } else if (topic.properties[i].name == "Webpage") {
+                        // label = '';
+                        value = kiezatlas.makeWebpageLink(value, value);
+                        // label + 
+                        propertyList += '<b>' + value + '</b>&nbsp;';
+                        // propertyList += '<p><i class="cats">Kategorien:</i>&nbsp;';
+                    } else {
+                        propertyList += '<br/><b>' + value + '</b>';
+                    }
+                }
+                propertyList += '<br/>';
+            }
+        }
+        infoItem += propertyList;
+        infoItem += "</p></div>";
+        // 
+        jQuery("#infoo-area .content-body").html(infoHeader);
+        jQuery("#infoo-area .content-body").append(infoItem);
     }
-    console.log("map.setup => " + kiezatlas.markers.length + " leaflets for " + kiezatlas.mapTopics.result.topics.length
-      + " loaded topics");
-  }
-  
-  this.renderTitle = function (object) {
-    return '<div id="' + object.id + '" onclick="kiezatlas.onBubbleClick(this)" class="topic-name item">'
-      + '<b id="' + object.id + '">' + object.name + '&nbsp;&rsaquo;&rsaquo;</b></div>';
-  }
-  
-  this.onBubbleClick = function (e) {
-    var topicId = e.id;
-    // load geoobject container
-    kiezatlas.info(topicId);
-  }
-  // ### make this helper fit for clusters, multiple topics represented as one marker.
-  /* this.focusMarkerByTopicId = function (id) {
-    // console.log(kiezatlas.markers[0]);
-    for (var i = 0; i < kiezatlas.markers.length; i++) {
-      var m = kiezatlas.markers[i];
-      if (m.options.topicId[0] == id) {
-        kiezatlas.map.setView(m.getLatLng(), kiezatlas.LEVEL_OF_DETAIL_ZOOM);
-      }
-    }
-  } **/
-  
-  this.getMarkerByLatLng = function (latLng) {
-    //
-    for (var i = 0; i < kiezatlas.markers.length; i++) {
-      var marker = kiezatlas.markers[i];
-      if (marker._latlng.equals(latLng)) {
-        return marker;
-      }
-    }
-    // 
-    return null;
-  }
-  
-  this.clearMarkers = function  () {
-    for (var i = 0; i < kiezatlas.markers.length; i++) {
-      var m = kiezatlas.markers[i];
-      try {
-        kiezatlas.map.removeLayer(m);
-      } catch (e) {
-        console.log("Exception: " + e);
-      }
-    }
-  }
-  
-  this.getMarkersBounds = function () {
-    var bounds = new L.LatLngBounds();
-    for (var i = 0; i < kiezatlas.markers.length; i++) {
-      var m = kiezatlas.markers[i];
-      var lng = m._latlng.lng;
-      var lat = m._latlng.lat;
-      var skip = false;
-      if (lat == 0.0 || lng == 0.0) {
-        skip = true;
-      } else if (lng < -180.0 || lng > 180.0) {
-        skip = true;
-      } else if (lat < -90.0 || lat > 90.0) {
-        skip = true;
-      } else if (isNaN(lat) || isNaN(lng)) {
-        skip = true;
-      }
-      if (!skip) {
-        var point = new L.LatLng(parseFloat(lat), parseFloat(lng));
-        bounds.extend(point);
-      }
-    }
-    return bounds;
-  }
-  
-  this.getUsersLocation = function (options) {
-    // set default options
-    if (options == undefined) {
-      options =  { "setView" : true, "maxZoom" : kiezatlas.LEVEL_OF_KIEZ_ZOOM };
-    }
-    // ask browser for location-info
-    kiezatlas.map.locate(options);
-    jQuery("img.loading").hide();
-  }
-  
-  this.onLocationFound = function(e) {
-    var radius = e.accuracy / 2;
-    if (kiezatlas.locationCircle != undefined) {
-      kiezatlas.map.removeLayer(kiezatlas.locationCircle);
-    }
-    kiezatlas.locationCircle = new L.Circle(e.latlng, radius, { "stroke": true, "clickable": false, "color": "#1d1d1d", 
-      "fillOpacity": 0.3, "opacity": 0.3, "weight":2}); // show double sized circle..
-    kiezatlas.map.addLayer(kiezatlas.locationCircle, { "clickable" : true });
-    kiezatlas.locationCircle.bindPopup("You are within " + radius + " meters from this point");
-    kiezatlas.map.setView(e.latlng, kiezatlas.LEVEL_OF_KIEZ_ZOOM);
-    // kiezatlas.map.panTo(e.latlng);
-    jQuery("img.loading").hide();
-  }
-  
-  this.onLocationError = function (e) {
-    kiezatlas.closeNotificationDialog();
-    // 
-    var notificationDialog = '<div id="message" onclick="kiezatlas.closeNotificationDialog()" class="notification">'
-      + '<div id="content">Die Abfrage ihres aktuellen Standorts wurde erfolgreich zur&uuml;ckgewiesen. '
-        + 'Mit dem folgenden Link bieten wir ihnen die M&ouml;glichkeit '
-        + '<a href="javascript:kiezatlas.showKiezatlasMaps()">einen der 12 Berliner Stadtbezirke direkt '
-        + 'anzuw&auml;hlen.</a>'
-      + '</div></div>';
-    jQuery("#map").append(notificationDialog);
-  }
-  
-  this.closeNotificationDialog = function () {
-    jQuery("#message").remove();
-  }
 
-  this.focusDistrict = function(e) {
-    var districtId = e.target.id;
-    // 
-    var mittePoint = new L.LatLng(52.520979, 13.407097);
-    var fkPoint = new L.LatLng(52.501814, 13.432503);
-    var pankowPoint = new L.LatLng(52.552257, 13.43008);
-    var chbWilmPoint = new L.LatLng(52.503916, 13.283157);
-    var spandauPoint = new L.LatLng(52.53734, 13.168449);
-    var stglitZehPoint = new L.LatLng(52.436781, 13.24913);
-    var tplHofSchPoint = new L.LatLng(52.469629, 13.383026);
-    var nkPoint = new L.LatLng(52.443478, 13.446198);
-    var trepKopPoint = new L.LatLng(52.453522, 13.56945);
-    var mHelPoint = new L.LatLng(52.534417, 13.565331);
-    var lichtenberPoint = new L.LatLng(52.540473, 13.502846);
-    var reinickenPoint = new L.LatLng(52.592424, 13.326569);
-    // 
-    if (districtId == "mitte") {
-      kiezatlas.map.setView(mittePoint, kiezatlas.LEVEL_OF_DISTRICT_ZOOM);
-    } else if (districtId == "pankow") {
-      kiezatlas.map.setView(pankowPoint, kiezatlas.LEVEL_OF_DISTRICT_ZOOM);
-    } else if (districtId == "fkreuz") {
-      kiezatlas.map.setView(fkPoint, kiezatlas.LEVEL_OF_DISTRICT_ZOOM);
-    } else if (districtId == "chbw") {
-      kiezatlas.map.setView(chbWilmPoint, kiezatlas.LEVEL_OF_DISTRICT_ZOOM);
-    } else if (districtId == "spandau") {
-      kiezatlas.map.setView(spandauPoint, kiezatlas.LEVEL_OF_DISTRICT_ZOOM);
-    } else if (districtId == "steglitz") {
-      kiezatlas.map.setView(stglitZehPoint, kiezatlas.LEVEL_OF_DISTRICT_ZOOM);
-    } else if (districtId == "tempelhof") {
-      kiezatlas.map.setView(tplHofSchPoint, kiezatlas.LEVEL_OF_DISTRICT_ZOOM);
-    } else if (districtId == "neukoelln") {
-      kiezatlas.map.setView(nkPoint, kiezatlas.LEVEL_OF_DISTRICT_ZOOM);
-    } else if (districtId == "treptow") {
-      kiezatlas.map.setView(trepKopPoint, kiezatlas.LEVEL_OF_DISTRICT_ZOOM);
-    } else if (districtId == "marzahn") {
-      kiezatlas.map.setView(mHelPoint, kiezatlas.LEVEL_OF_DISTRICT_ZOOM);
-    } else if (districtId == "lichtenberg") {
-      kiezatlas.map.setView(lichtenberPoint, kiezatlas.LEVEL_OF_DISTRICT_ZOOM);
-    } else if (districtId == "reinickendorf") {
-      kiezatlas.map.setView(reinickenPoint, kiezatlas.LEVEL_OF_DISTRICT_ZOOM);
+    this.toggleInfoItem = function (e) {
+        var itemId = e.currentTarget.offsetParent.children[2].id;
+        jQuery('#'+itemId).toggle();
     }
-    kiezatlas.hideKiezatlasControl();
-  }
 
-  this.hideKiezatlasControl = function () {
-    console.log("press hide kiezatlas-control")
-    // jQuery('a#go-more').click(kiezatlas.showKiezatlasMaps);
-    jQuery("#kiezatlas-control").hide();
-  }
-
-  this.hideAddressBarThroughScrolling = function () {
-    if (navigator.userAgent.match(/Android/i)) {
-      window.scrollTo(0,0); // reset in case prev not scrolled  
-      var nPageH = $(document).height();
-      var nViewH = window.outerHeight;
-      if (nViewH > nPageH) {
-        nViewH = nViewH / window.devicePixelRatio;
-        $('body').css('height',nViewH + 'px');
-      }
-      window.scrollTo(0,1);
+    this.setupLeafletMarkers = function(isMobile) {
+        // 
+        var KiezAtlasIcon = L.Icon.extend({
+          options: {
+            iconUrl: 'css/locationPointer.png',
+            shadowUrl: null, iconSize: new L.Point(40, 40), shadowSize: null,
+            iconAnchor: new L.Point(20, 14), popupAnchor: new L.Point(0, 4)
+          }
+        });
+        var myIcon = new KiezAtlasIcon();
+        // 
+        if (kiezatlas.markers != undefined) {
+            kiezatlas.clearMarkers();
+        }
+        kiezatlas.markers = new Array(); // helper to keep the refs to all markes once added..
+        // 
+        for (var i = 0; i < kiezatlas.mapTopics.result.topics.length; i++) {
+            // get info locally
+            var topic = kiezatlas.mapTopics.result.topics[i];
+            var topicId = topic.id;
+            var marker = undefined;
+            var latlng = undefined;
+            var lng = topic.long;
+            var lat = topic.lat;
+            // sanity check..
+            var skip = false;
+            if (lat == 0.0 || lng == 0.0) {
+                skip = true;
+            } else if (lng < -180.0 || lng > 180.0) {
+                skip = true;
+            } else if (lat < -90.0 || lat > 90.0) {
+                skip = true;
+            } else if (isNaN(lat) || isNaN(lng)) {
+                skip = true;
+            }
+            if (!skip) {
+                latlng = new L.LatLng(parseFloat(lat), parseFloat(lng));
+            }
+            // 
+            if (latlng != undefined) {
+                var existingMarker = kiezatlas.getMarkerByLatLng(latlng);
+                if (existingMarker != null) {
+                    marker = existingMarker;
+                    // add our current, proprietary topicId to the marker-object
+                    marker.options.topicId.push(topicId);
+                    var previousContent = marker._popup._content;
+                    marker.bindPopup(kiezatlas.renderTitle(topic) + previousContent);
+                } else {
+                    marker = new L.Marker(latlng, { 'clickable': true , 'topicId': [topicId] }); // icon: myIcon
+                    marker.bindPopup(kiezatlas.renderTitle(topic));
+                }
+                // add marker to map object
+                kiezatlas.map.addLayer(marker);
+                // reference each marker in kiezatlas.markers model
+                kiezatlas.markers.push(marker);
+                // 
+                marker.on('click', function (e) {
+                    // 
+                    this._popup.options.autoPan = true;
+                    this._popup.options.maxWidth = 160;
+                    this._popup.options.closeButton = true;
+                    this.openPopup();
+                    // 
+                    // bubbles click handler consumed by onBubbleClick
+                    // jQuery(".leaflet-popup-content-wrapper").click(kiezatlas.onBubbleClick);
+                }, marker);
+            }
+        }
+        // console.log("map.setup => " + kiezatlas.markers.length + " leaflets for "
+           // + kiezatlas.mapTopics.result.topics.length + " loaded topics");
+        if (isMobile) $.mobile.loader("hide")
     }
-  }
+
+    this.renderTitle = function (object) {
+        return '<div id="' + object.id + '" onclick="kiezatlas.onBubbleClick(this)" class="topic-name item">'
+            + '<b id="' + object.id + '">' + object.name + '&nbsp;&rsaquo;&rsaquo;</b></div>';
+    }
+
+    this.onBubbleClick = function (e) {
+        var topicId = e.id;
+        // load geoobject container
+        kiezatlas.info(topicId);
+    }
+
+    this.getMarkerByLatLng = function (latLng) {
+        //
+        for (var i = 0; i < kiezatlas.markers.length; i++) {
+            var marker = kiezatlas.markers[i];
+            if (marker._latlng.equals(latLng)) {
+                return marker;
+            }
+        }
+        // 
+        return null;
+    }
+  
+    this.clearMarkers = function  () {
+        for (var i = 0; i < kiezatlas.markers.length; i++) {
+            var m = kiezatlas.markers[i];
+            try {
+                kiezatlas.map.removeLayer(m);
+            } catch (e) {
+                console.log("Exception: " + e);
+            }
+        }
+    }
+
+    this.getMarkersBounds = function () {
+        var bounds = new L.LatLngBounds();
+        for (var i = 0; i < kiezatlas.markers.length; i++) {
+            var m = kiezatlas.markers[i];
+            var lng = m._latlng.lng;
+            var lat = m._latlng.lat;
+            var skip = false;
+            if (lat == 0.0 || lng == 0.0) {
+                skip = true;
+            } else if (lng < -180.0 || lng > 180.0) {
+                skip = true;
+            } else if (lat < -90.0 || lat > 90.0) {
+                skip = true;
+            } else if (isNaN(lat) || isNaN(lng)) {
+                skip = true;
+            }
+            if (!skip) {
+                var point = new L.LatLng(parseFloat(lat), parseFloat(lng));
+                bounds.extend(point);
+            }
+        }
+        return bounds;
+    }
+
+    this.getUsersLocation = function (options) {
+        // set default options
+        if (options == undefined) {
+            options =  { "setView" : true, "maxZoom" : kiezatlas.LEVEL_OF_KIEZ_ZOOM };
+        }
+        // ask browser for location-info
+        kiezatlas.map.locate(options);
+        jQuery("img.loading").hide();
+    }
+
+    this.onLocationFound = function(e) {
+        var radius = e.accuracy / 2;
+        if (kiezatlas.locationCircle != undefined) {
+          kiezatlas.map.removeLayer(kiezatlas.locationCircle);
+        }
+        kiezatlas.locationCircle = new L.Circle(e.latlng, radius, { "stroke": true, "clickable": false, "color":
+            "#1d1d1d", "fillOpacity": 0.3, "opacity": 0.3, "weight":2}); // show double sized circle..
+        kiezatlas.map.addLayer(kiezatlas.locationCircle, { "clickable" : true });
+        kiezatlas.locationCircle.bindPopup("You are within " + radius + " meters from this point");
+        kiezatlas.map.setView(e.latlng, kiezatlas.LEVEL_OF_KIEZ_ZOOM);
+        // kiezatlas.map.panTo(e.latlng);
+        jQuery("img.loading").hide();
+    }
+  
+    this.onLocationError = function (e) {
+        kiezatlas.closeNotificationDialog();
+        // 
+        var notificationDialog = '<div id="message" onclick="kiezatlas.closeNotificationDialog()" class="notification">'
+            + '<div id="content">Die Abfrage ihres aktuellen Standorts wurde erfolgreich zur&uuml;ckgewiesen. '
+                + 'Mit dem folgenden Link bieten wir ihnen die M&ouml;glichkeit '
+                + '<a href="javascript:kiezatlas.showKiezatlasMaps()">einen der 12 Berliner Stadtbezirke direkt '
+                + 'anzuw&auml;hlen.</a>'
+            + '</div></div>';
+        jQuery("#map").append(notificationDialog);
+    }
+  
+    this.closeNotificationDialog = function () {
+        jQuery("#message").remove();
+    }
 
   this.setMap = function(mapObject)  {
     this.map = mapObject;

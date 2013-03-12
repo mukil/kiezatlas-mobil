@@ -45,6 +45,11 @@ html, body {
   position: relative; bottom: 0px;
 }
 
+.map-title-link {
+  position: absolute;
+  top: 0px;
+}
+
 .panorama-width {
   width: 50%; height: 100%;
 }
@@ -58,19 +63,30 @@ html, body {
 }
 
 #navigation {
-  background-color: #388fd0; /** #D3D3D3; opacity: 0.8; be-link blue #2D509A **/
+  background-color: #BBB; /** #D3D3D3; opacity: 0.8; be-link blue #2D509A **/
   position: fixed; top: 0px; left: 0px; width: 100%; z-index: 100;
-  text-align: center; height: 35px; padding-top: 5px; padding-top: 15px;
+  text-align: center; height: 25px; padding-top: 5px; padding-top: 10px;
   font: 12px/1.4 "Helvetica Neue", Arial, Helvetica, sans-serif;
-  border-bottom: 1px solid #fff;
+  border-bottom: 1px solid #FC3;
 }
 
 #navigation a {
   font-weight: bold;
   color: #fff; text-decoration: none; 
-  padding-top: 20px; padding-bottom: 20px;
+  padding-top: 10px; padding-bottom: 9px;
   padding-left: 10px; padding-right: 10px;
 }
+
+#navigation .city-map-selection {
+    position: absolute;
+    left: 0px; top: 0px;
+}
+
+#navigation .home {
+    position: absolute;
+    right: 0px; top: 0px;
+}
+
 
 #navigation a:hover {
   color: #333; background-color: #fff;
@@ -93,11 +109,6 @@ html, body {
   padding: 0px; margin: 0px; z-index: 101;
   position: relative; left: -100px; top: 10px;
   background: transparent;
-}
-
-.map-title-link {
-  position: absolute;
-  top: 0px;
 }
 
 a.topic-name {
@@ -133,24 +144,24 @@ ul.ka-select li {
 .info-container-portrait { /** padding: 10px; **/
   height:40%; width: 100%; max-height: 300px; min-height: 30%;
   position:absolute; bottom: 0px; left: 0px;
-  background-color: #388fd0; /** #388fd0 **/
-  z-index: 101; border-top: 1px solid #fff;
+  background-color: #BBB; /** #388fd0 **/
+  z-index: 101; border-left: 1px solid #FC3;
 }
 
 .info-container-panorama {
   /** padding: 10px; **/
   height:100%; width: 50%; max-width: 50%; min-width: 30%;
   position:absolute; bottom: 0px; right: 0px;
-  background-color: #388fd0; /** #388fd0 **/
-  z-index: 101; border-left: 1px solid #fff;
+  background-color: #BBB; /** #388fd0 **/
+  z-index: 101; border-left: 1px solid #FC3;
 }
 
 .info-container-panorama-big {
   /** padding: 10px; **/
   height:100%; width: 40%; max-width: 40%;
   position:absolute; bottom: 0px; right: 0px;
-  background-color: #388fd0; /** #388fd0 **/
-  z-index: 101; border-left: 1px solid #fff;
+  background-color: #BBB; /** #388fd0 **/
+  z-index: 101; border-left: 1px solid #FC3;
 }
 
 #scroller {
@@ -183,15 +194,29 @@ ul.ka-select li {
 #info-item {
   width: 80%; position: relative;
   font: 14px/1.4 "Helvetica Neue", Arial, Helvetica, sans-serif;
-  color: #fff; padding-left: 10px; padding-right: 55px;
+  color: #000; padding-left: 10px; padding-right: 55px;
+}
+
+
+#infoo .title {
+  padding-left: 10px;
+}
+
+#infoo .additionalInfoWhite {
+  margin-top: 10px;
+}
+
+.fahrinfo {
+  background-color: #fff;
+  padding: 4px;
 }
 
 #info-item p b a {
-  color: #fff;
+  color: #000;
 }
 
 #info-item a {
-  color: #fff;
+  color: #000;
 }
 
 #close-button {
@@ -263,29 +288,6 @@ ul.ka-select li {
 .leaflet-control-zoom-loc {
   background-image: url(locate.png);
   margin-top: 0px; margin-bottom: 5px;
-}
-
-#go-more {
-  /** position: fixed; left: 0px; top: -7px; **/
-  background-image: url(front.png);
-  background-position: 25px 7px;
-  /** background-position-x: 30px;
-  background-position-y: 3px; **/
-}
-
-#go-more.selected {
-  color: #000;
-  background-color: #fff;
-}
-
-a#go-more {
-  padding: 3px; /**  padding-bottom: 15px; padding-top: 15px **/
-  font-size: 15px; text-decoration: none; padding-left: 25px !important; position: relative; left: -22px; top: -8px;
-  margin-bottom: -2px; margin-left: 0px; margin-top: 5px; padding-top: 10px;
-}
-
-a#go-more:link {
-  text-decoration: none;
 }
 
 /** 
