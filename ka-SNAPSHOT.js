@@ -99,7 +99,7 @@ var kiezatlas = new function() {
     }
 
     this.renderMobileCityMapList = function (obj) {
-        obj.sort(kiezatlas.topicSort); // alphabetical ascending
+        obj.sort(kiezatlas.alphabetical_sort_desc); // alphabetical descending
         $("ul.citymap-listing").empty()
         $("ul.citymap-listing").append('<li data-role="list-divider" '
             + ' data-theme="e" id="all-citymaps">Alle Stadtpl&auml;ne</li>')
@@ -126,6 +126,7 @@ var kiezatlas = new function() {
             item.append(link)
             $("ul.citymap-listing").append(item)
         }
+        $("#all-citymaps").html("Alle Stadtpl&auml;ne")
         $("ul.citymap-listing").listview( "refresh")
     }
 
@@ -139,7 +140,6 @@ var kiezatlas = new function() {
         }
         // update model
         kiezatlas.loadCityObjectInfo(kiezatlas.cityMapId)
-        console.log(kiezatlas.mapTopic)
         kiezatlas.loadCityMapTopics(kiezatlas.cityMapId, kiezatlas.workspaceId);
         kiezatlas.setupLeafletMarkers(true) // all L.LatLng()s are constructed here
         kiezatlas.updateMobileMapGUI(true)
@@ -156,12 +156,12 @@ var kiezatlas = new function() {
             kiezatlas.loadMapTiles()
             // set new page titles to citymap name
             kiezatlas.setMobileViewTitle(kiezatlas.mapTopic.name)
-            window.document.title = kiezatlas.mapTopic.name
         }
     }
 
     this.setMobileViewTitle = function(newTitle) {
         $(".my-title").html(newTitle)
+        window.document.title = newTitle + " 1.0"
     }
 
     this.getURLParameter = function(paramName) {
@@ -361,7 +361,7 @@ var kiezatlas = new function() {
                 xhr.setRequestHeader("Content-Type", "application/json")
             },
             success: function(obj) {
-                console.log('loaded \"' + obj.result.name + '\" ' + (renderFunction == undefined))
+                // console.log('loaded \"' + obj.result.name + '\" ' + (renderFunction == undefined))
                 kiezatlas.mapTopic = obj.result
                 if (renderFunction == undefined) return obj.result // what does this actually do, stupid!
                 renderFunction(obj.result);
@@ -421,15 +421,16 @@ var kiezatlas = new function() {
         // 
         var propertyList = ''; //<table width="100%" cellpadding="2" border="0"><tbody>';
         for (var i=0; i < topic.properties.length; i++) {
-                // build html for attributes to display for an informational object
+            // build html for attributes to display for an informational object
             if (topic.properties[i].label.indexOf("Sonstiges") != -1) {
                 propertyList += '<p class="additionalInfoWhite">';
             } else if (topic.properties[i].label.indexOf("Administrator") != -1) {
                 // skipping: propertyList += '<p class="additionalInfo">';
             } else if (topic.properties[i].label == "Barrierefrei" && topic.properties[i].value == "") {
                 // skip rendering Barrierefrei-Field cause value was not set yet
-            } else if (topic.properties[i].value == "") {
+            } else if (topic.properties[i].value === "" || topic.properties[i].value === " ") {
                 // skip rendering label for empty value
+                // fixme: for empty multi-type properties labels are still rendered
             } else {
                 propertyList +=  '<br/>' + topic.properties[i].label + ':&nbsp;';
             }
@@ -437,7 +438,11 @@ var kiezatlas = new function() {
             if (topic.properties[i].type == 0) {
                 if (topic.properties[i].label.indexOf("Barrierefrei") == -1) {
                     // ordinary rendering for DM Property Type Single Value
-                    propertyList += '<b>' + topic.properties[i].value + '</b>';
+                    if (topic.properties[i].value === "" || topic.properties[i].value === " ") {
+                        // skip rendering empty value
+                    } else {
+                        propertyList += '<b>' + topic.properties[i].value + '</b>';
+                    }
                 } else {
                     // special al rendering for the "BARRIERFREE_ACCESS"-Property
                     if (topic.properties[i].value == "") {
@@ -452,7 +457,8 @@ var kiezatlas = new function() {
                         propertyList +=  '<b>' + topic.properties[i].value + '</b></p>';
                     }
                 }
-            // propertyList +=  '<p>' + topic.properties[i].name + ':&nbsp;<b>' + topic.properties[i].value + '</b><p/>';
+                // propertyList +=  '<p>' + topic.properties[i].name + ':&nbsp;<b>'
+                    // + topic.properties[i].value + '</b><p/>';
             } else {
                 // DM Property Type Multi Value
                 var stringValue = "";
@@ -470,11 +476,13 @@ var kiezatlas = new function() {
                         // label + 
                         propertyList += '<b>' + value + '</b>&nbsp;';
                         // propertyList += '<p><i class="cats">Kategorien:</i>&nbsp;';
+                    } else if (!value || /^\s*$/.test(value)) { // http://stackoverflow.com/a/3261380 by Jano Gonzáles
+                        // skip rendering space for empty values
                     } else {
                         propertyList += '<br/><b>' + value + '</b>';
                     }
                 }
-                propertyList += '<br/>';
+                propertyList += '</br>';
             }
         }
         infoItem += propertyList;
@@ -564,7 +572,10 @@ var kiezatlas = new function() {
 
     this.renderTitle = function (object) {
         return '<div id="' + object.id + '" onclick="kiezatlas.onBubbleClick(this)" class="topic-name item">'
-            + '<b id="' + object.id + '">' + object.name + '&nbsp;&rsaquo;&rsaquo;</b></div>';
+            + '<b id="' + object.id + '">' + object.name 
+            + '&nbsp;&rsaquo;&rsaquo;&rsaquo;</b></div>';
+            // <br/>.. mehr Infos dazu
+            // <br/><img class="more" src="css/read_more_plus.png"> 
     }
 
     this.onBubbleClick = function (e) {
@@ -627,21 +638,29 @@ var kiezatlas = new function() {
         }
         // ask browser for location-info
         kiezatlas.map.locate(options);
-        jQuery("img.loading").hide();
+        // ("img.loading").hide();
     }
 
     this.onLocationFound = function(e) {
-        var radius = e.accuracy / 2;
+        var radius = e.accuracy;
         if (kiezatlas.locationCircle != undefined) {
           kiezatlas.map.removeLayer(kiezatlas.locationCircle);
-        }
+        }        
+        var $mapMessage = $("#message.notification")
+        // $mapMessage.show("fast")
+        $mapMessage.html('Ihr Smartphone hat Sie gerade automatisch lokalisiert.<br/>'
+            + 'Dr&uuml;cken Sie hier um den Kartenausschnit zur&uuml;ckzusetzen.')
+        $mapMessage.click(kiezatlas.setToCurrentBounds)
+        $mapMessage.fadeIn(1000)
+        setTimeout(function(e) {
+            $mapMessage.fadeOut(3000)
+        }, 3000)
         kiezatlas.locationCircle = new L.Circle(e.latlng, radius, { "stroke": true, "clickable": false, "color":
-            "#1d1d1d", "fillOpacity": 0.3, "opacity": 0.3, "weight":2}); // show double sized circle..
+            "#1d1d1d", "fillOpacity": 0.3, "opacity": 0.3, "weight":10}); // show double sized circle..
         kiezatlas.map.addLayer(kiezatlas.locationCircle, { "clickable" : true });
         kiezatlas.locationCircle.bindPopup("You are within " + radius + " meters from this point");
         kiezatlas.map.setView(e.latlng, kiezatlas.LEVEL_OF_KIEZ_ZOOM);
         // kiezatlas.map.panTo(e.latlng);
-        jQuery("img.loading").hide();
     }
   
     this.onLocationError = function (e) {
@@ -655,15 +674,29 @@ var kiezatlas = new function() {
             + '</div></div>';
         jQuery("#map").append(notificationDialog);
     }
-  
+
     this.closeNotificationDialog = function () {
         jQuery("#message").remove();
+    }
+
+    /** sorting desc by item.value */
+    this.alphabetical_sort_desc = function (a, b) {
+        // console.log(a)
+        var scoreA = a.name
+        var scoreB = b.name
+        if (scoreA < scoreB) // sort string descending
+          return -1
+        if (scoreA > scoreB)
+          return 1
+        return 0 //default return value (no sorting)
     }
 
   this.setMap = function(mapObject)  {
     this.map = mapObject;
     //
     this.map.options.touchZoom = true;
+    kiezatlas.map.on('locationfound', kiezatlas.onLocationFound);
+    // kiezatlas.map.on('locationerror', kiezatlas.onLocationError);
   }
 
   this.setMapTopics = function(topics) {
@@ -882,7 +915,7 @@ var kiezatlas = new function() {
     }
     return new L.LatLng(lat, lng);
   }
-  
+
   this.makeEhrenamtsLink = function (url, label) {
     // quick fix to correct automaticyll imported links to new external mobile-website
     var indexForMobileURL = url.indexOf("g.cfm");

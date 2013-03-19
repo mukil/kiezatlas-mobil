@@ -14,22 +14,43 @@ html, body {
   overflow: hidden;
 }
 
-#message.notification {
-  position: fixed; bottom: 0px; left: 0px;
-  background-color: #388fd0; color: #fff; width: 100%;
-  font: 12px/1.4 "Helvetica Neue", Arial, Helvetica, sans-serif;
-  line-height: 1.7; font-weight: bold;
-  z-index: 113;
+img.more {
+  padding: 4px;
 }
 
-#message #content {
+h1.my-title {
+  margin: 10px 10px !important;
+}
+
+.ui-li .ui-btn-text a.ui-link-inherit {
+  white-space: normal !important;
+}
+
+#content-area.ui-content {
+  padding: 0px !important; height: 200px !important;
+}
+
+.ui-panel-content-wrap.ui-body-c.ui-panel-animate.ui-panel-content-wrap-closed {
+  display: none;
+}
+
+#message.notification {
+  position: fixed; bottom: 50px; left: 0px;
+  color: #343434; padding: 10px;
+  font: 14px "Helvetica Neue", Arial, Helvetica, sans-serif;
+  line-height: 1.4; font-weight: bold;
+  z-index: 1002; display: none;
+  background: linear-gradient(rgb(252, 237, 167), rgb(251, 239, 126)) repeat scroll 0% 0% rgb(250, 219, 78)
+}
+
+#message {
   padding: 20px;
   padding-bottom: 50px;
 }
 
 #message.notification a {
-  text-decoration: none;
-  background-color: #fff; padding: 3px;
+  text-decoration: underline;
+  color: #343434;
 }
 
 #close {
