@@ -43,7 +43,7 @@
                     kiezatlas.setImagesFolder("http://www.kiezatlas.de/client/images/");
                     if (fromPage.indexOf("info") != -1) {
                         // do nothing, in particular do not initialize our citymap again
-                        kiezatlas.updateMobileMapGUI(false)
+                        kiezatlas.renderLeafletContainer(false)
                     } else if (fromPage.indexOf("citymaps-page") == -1) {
                         kiezatlas.renderMobileCityMapView()
                     }
@@ -53,10 +53,9 @@
                     if (kiezatlas.markers != undefined) kiezatlas.clearMarkers() // clean up on the way back(tothelist)
                     kiezatlas.setMobileViewTitle("kiezatlas.de Mobil");
                     if (kiezatlas.publishedMaps == undefined || kiezatlas.publishedMaps.length == 0) {
-                        kiezatlas.getPublishedMobileCityMaps()
+                        kiezatlas.loadPublishedMobileCityMaps()
                         kiezatlas.renderMobileCityMapList(kiezatlas.publishedMaps)
                     } else {
-                        console.log("re-rendering citymaps-listing.." + kiezatlas.publishedMaps.length)
                         kiezatlas.renderMobileCityMapList(kiezatlas.publishedMaps)
                     }
 
@@ -67,7 +66,7 @@
             if (window.location.href.indexOf("#citymaps-page") == -1 && 
                 window.location.href.indexOf("#infoo") == -1) {
                 // this is just here because initially, no "pagechange" is fired by jqm
-                kiezatlas.getPublishedMobileCityMaps()
+                kiezatlas.loadPublishedMobileCityMaps()
                 kiezatlas.renderMobileCityMapList(kiezatlas.publishedMaps)
             } else {
                 kiezatlas.cityMapId = kiezatlas.getURLParameter("mapId")
