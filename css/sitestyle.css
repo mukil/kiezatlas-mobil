@@ -227,6 +227,10 @@ ul.ka-select li {
   margin-top: 10px;
 }
 
+#infoo-area img.logo {
+    padding: 10px;
+}
+
 .fahrinfo {
   background-color: #fff;
   padding: 4px;

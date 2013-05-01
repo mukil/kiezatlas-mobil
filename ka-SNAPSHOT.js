@@ -311,6 +311,12 @@ var kiezatlas = new function() {
         var infoHeader = '<div id="info-table">';
             infoHeader += '<h3 class="title">' + topic.name + '</h3></div>';
             // infoHeader += '<a href="#" onclick="javascript:kiezatlas.scrollInfoDown()">||</a>';
+        var imgSrc = kiezatlas.getImageSource(topic);
+        var akteursImg = kiezatlas.getAkteurImageSource(topic);
+        if (imgSrc != "undefined") {
+            imgSrc = "http://www.kiezatlas.de/client/images/" + imgSrc;
+            infoHeader += '<img src="' + imgSrc + '" class="logo"><br/>';
+        }
         var infoItem = "";
         // 
         var street = kiezatlas.getTopicAddress(topic);
@@ -419,6 +425,10 @@ var kiezatlas = new function() {
                 }
                 propertyList += '</br>';
             }
+        }
+        if (akteursImg != "undefined") {
+            akteursImg = "http://www.kiezatlas.de/client/images/" + akteursImg;
+            propertyList += '<img src="' + akteursImg + '" class="logo"><br/>';
         }
         infoItem += propertyList;
         infoItem += "</p></div>";
@@ -758,6 +768,15 @@ var kiezatlas = new function() {
   this.getImageSource = function (topic) {
     for (var i=0; i < topic.properties.length; i++) {
       if (topic.properties[i].name == "Image / File" && topic.properties[i].value != "") {
+        return topic.properties[i].value;
+      }
+    }
+    return "undefined";
+  }
+
+  this.getAkteurImageSource = function (topic) {
+    for (var i=0; i < topic.properties.length; i++) {
+      if (topic.properties[i].name == "Akteur Logo" && topic.properties[i].value != "") {
         return topic.properties[i].value;
       }
     }
