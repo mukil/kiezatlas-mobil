@@ -809,7 +809,8 @@ var kiezatlas = new function() {
         for ( var k=0; k < topic.properties[i].values.length; k++ ) {
           value = topic.properties[i].values[k].name;
           if (topic.properties[i].name == "Webpage") {
-            value = kiezatlas.makeEhrenamtsLink(value, value);
+	          var originId = kiezatlas.getTopicOriginId(topic)
+            value = kiezatlas.makeEhrenamtsLink(value, originId);
             return '<div class="webpage-button">' + value + '</div>';
           }
         }
@@ -853,13 +854,15 @@ var kiezatlas = new function() {
     return new L.LatLng(lat, lng);
   }
   
-  this.makeEhrenamtsLink = function (url, label) {
+  this.makeEhrenamtsLink = function (url, originId) {
     // quick fix to correct automaticyll imported links to new external mobile-website
-    var indexForMobileURL = url.indexOf("g.cfm");
+    /** var indexForMobileURL = url.indexOf("g.cfm");
     var firstPartURL = url.substr(0, indexForMobileURL + 1);
     var secondPartURL = url.substr(indexForMobileURL + 1);
-    var newMobileURL = firstPartURL + "_mobil" + secondPartURL;
-    urlMarkup = '<a href="' + newMobileURL + '" target="_blank">.. weiter zur T&auml;tigkeitsbeschreibung</a>';
+    var newMobileURL = firstPartURL + "_mobil" + secondPartURL; **/
+    var url = 'http://www.berlin.de/buergeraktiv/engagieren/buerger/ehrenamtssuche/index.cfm?'
+      + 'dateiname=ehrenamt_projektbeschreibung_mobil.cfm&anwender_id=5&projekt_id=' + originId + '&cfide=0.662606781956'
+    urlMarkup = '<a href="' + url + '" target="_blank">.. weiter zur T&auml;tigkeitsbeschreibung</a>';
       //  + '<img src="css/link_extern.gif" alt="(externer Link)" border="0" height="11" width="12"/>
     // else urlMarkup = '<a href="'+url+'" target="_blank">'+label+'</a>';
     return urlMarkup
