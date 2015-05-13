@@ -1,30 +1,29 @@
 /** 
  * This is some KiezatlasJS citymap client designed to run on all major mobile screens.
- * @author  Malte Rei&szlig;ig (malte@mikromedia.de), Copyright (c) 2013
+ * @author  Malte Rei&szlig;ig (rma@mikromedia.de), Copyright (c) 2012
  * @license   GPLv3 (http://www.gnu.org/licenses/gpl-3.0.en.html)
  * 
- * @requires  jQuery JavaScript Library v1.9.1, Copyright 2013, John Resig
+ * @requires  jQuery JavaScript Library v1.5.2, Copyright 2011, John Resig
               Dual licensed under the MIT or GPL Version 2 licenses.(http://jquery.org/license)
  * @requires  leaflet.js, Copyright (c) 2010-2012, CloudMade, Vladimir Agafonkin, All rights reserved.
  *            Used in version/with source code at https://github.com/mukil/Leaflet
- * @requires  jQueryMobile Library v1.3.1, Copyright 2013, John Resig
- *            Dual licensed under the MIT or GPL Version 2 licenses.(http://jquery.org/license)
- *
- * Implementation Notes: 
- * - load*-Methods set data (and even return data if a handler is given)
- * - render* or show*-Methods depend on jquery, jquerymobile and a specific DOM/Layout/IDs
- * - get/set* Methods operate on the kiezatlas-object itself (and use its reference as a client-side model)
- *
- * @modified  19 March 2013
+ * @requires  iscroll.js v4.1.9 ~ Copyright (c) 2011 Matteo Spinelli, http://cubiq.org
+ *            Released under MIT license, (http://cubiq.org/license)
+* 
+ * @modified  02.July 2012
  */
 
 var SERVER_URL = "http://m.kiezatlas.de/";
     // var SERVER_URL = "http://localhost:8080/kiezatlas/";
 var ICONS_URL = "http://www.kiezatlas.de/client/icons/"; // to be used by all icons if not relative to this folder
 var IMAGES_URL = "http://www.kiezatlas.de/client/images/";
-
+// ui-state
+// var autocomplete_item = 0;
+// var alternative_items = [];
+// var lastStreetName = "";
+// permalink-states
 var baseUrl = SERVER_URL;
- /** baseUrl = "http://localhost/kiezatlas-mobil/"; **/
+  // baseUrl = "http://localhost/kiezatlas-mobil/";
 var permaLink = "";
 var linkParams = [];
 // debug-state
@@ -62,10 +61,45 @@ var kiezatlas = new function() {
     //
     this.historyApiSupported = window.history.pushState;
     this.panoramaOrientation = undefined; // gui helper flag
+    this.myScroll = undefined; // iScroll reference
+
+    this.renderSite = function () {
+        // add button for explicit geolocation-moves
+        var locateButton = '<a class="leaflet-control-zoom-loc" href="#" title="Zu Ihrem jetzigen Standort"></a>';
+        // var moreButton = '<a id="go-more" title="Stadtplanauswahl" alt="Stadtplanauswahl"'
+          + 'href="#">Stadtplanauswahl</a>';
+        // register handlers
+        kiezatlas.map.on('locationfound', kiezatlas.onLocationFound);
+        kiezatlas.map.on('locationerror', kiezatlas.onLocationError);
+        jQuery(locateButton).insertBefore(".leaflet-control-zoom-in");
+        // jQuery(moreButton).insertBefore("#go-do");
+        // jQuery("#navigation").append(moreButton);
+        jQuery(".leaflet-control-zoom-loc").click(kiezatlas.getUsersLocation);
+        // 
+        jQuery('a#go-more').click(kiezatlas.showKiezatlasMaps);
+        // jQuery('#kiezatlas-control').click(kiezatlas.hideKiezatlasControl);
+        jQuery(window).resize(kiezatlas.handleOrientationChange);
+        // attempting to hide addressbar on android webkit browsers
+        kiezatlas.hideAddressBarThroughScrolling();
+    }
+  
+    this.executeBrowserSpecificCrap = function () {
+        // ### 
+        var head = document.getElementsByTagName('head')[0];
+        var style = document.createElement('style');
+        if (navigator.userAgent.indexOf('Fennec') != -1) {
+          style.innerHTML = '@media only screen { #top-button { display: none !important; } '
+            + '#go-more { background-position: 30px 10px; } }';
+        } else if (navigator.userAgent.indexOf('WebKit') != -1 && navigator.userAgent.indexOf('Android') != -1) {
+          style.innerHTML = '@media only screen { #go-more { background-position: 30px 12px !important;} }';
+        } else if (navigator.userAgent.indexOf('Opera') != -1) {
+          style.innerHTML = '@media only screen { #go-more { background-position: 30px 12px !important;} }';
+        }
+        head.appendChild(style);
+    }
 
     this.renderMobileCityMapList = function (obj) {
-        // sort given array alphabetical descending
-        obj.sort(kiezatlas.alphabetical_sort_desc);
+        obj.sort(kiezatlas.alphabetical_sort_desc); // alphabetical descending
         $("ul.citymap-listing").empty()
         $("ul.citymap-listing").append('<li data-role="list-divider" '
             + ' data-theme="e" id="all-citymaps">Alle Stadtpl&auml;ne</li>')
@@ -83,6 +117,11 @@ var kiezatlas = new function() {
                     +kiezatlas.cityMapId+ '&wsId=' +kiezatlas.workspaceId, 
                     { info: "info about the #foo hash", mapName: element.name, transition: "flow", showLoadMsg: true }
                 )
+                /** $.mobile.changePage('#citymaps-page', {
+                    transition: "flow", showLoadMsg: true,
+                    reverse: false, showLoadMsg: true,
+                    changeHash: true
+                });**/
             })
             item.append(link)
             $("ul.citymap-listing").append(item)
@@ -103,16 +142,16 @@ var kiezatlas = new function() {
         kiezatlas.loadCityObjectInfo(kiezatlas.cityMapId)
         kiezatlas.loadCityMapTopics(kiezatlas.cityMapId, kiezatlas.workspaceId);
         kiezatlas.setupLeafletMarkers(true) // all L.LatLng()s are constructed here
-        kiezatlas.renderLeafletContainer(true)
+        kiezatlas.updateMobileMapGUI(true)
         // ask for users location
         kiezatlas.getUsersLocation()
     }
 
-    this.renderLeafletContainer = function (reset) {
+    this.updateMobileMapGUI = function (resetBounds) {
         // update gui
         $("#map").height($(window).innerHeight())
         kiezatlas.map.invalidateSize()
-        if (reset) {
+        if (resetBounds) {
             kiezatlas.setToCurrentBounds()
             kiezatlas.loadMapTiles()
             // set new page titles to citymap name
@@ -171,7 +210,7 @@ var kiezatlas = new function() {
 
     this.loadCityMapTopics = function (mapId, workspaceId, handler) {
         var url = baseUrl + "../proxies/getCityMap.php?mapId="+mapId+"&workspaceId="+workspaceId;
-        // var body = '{"method": "getMapTopics", "params": ["' + mapId+ '" , "' + workspaceId + '"]}';
+        var body = '{"method": "getMapTopics", "params": ["' + mapId+ '" , "' + workspaceId + '"]}';
         jQuery.ajax({
             type: "GET", async: false,
                 // data: body, 
@@ -185,25 +224,6 @@ var kiezatlas = new function() {
             },
             error: function(x, s, e) {
                 throw new Error("Error while loading city-map. Message: " + JSON.stringify(x));
-            }
-        });
-    }
-
-    this.loadWorkspaceCriterias = function (mapId, handler) {
-        var url = baseUrl + "../proxies/getWorkspaceCriterias.php?mapId="+mapId;
-        jQuery.ajax({
-            type: "GET", async: false,
-                url: url, dataType: 'json',
-                beforeSend: function(xhr) { 
-                xhr.setRequestHeader("Content-Type", "application/json") 
-            },
-            success: function(obj) {
-                kiezatlas.setWorkspaceCriterias(obj)
-                kiezatlas.selectedCriteria = 0 // set getCategory to operate on default criteria 1
-                if (handler != undefined) handler()
-            },
-            error: function(x, s, e) {
-                throw new Error("Error while loading city-map. Message: " + JSON.stringify(x))
             }
         });
     }
@@ -229,11 +249,10 @@ var kiezatlas = new function() {
     }
 
 
-    /** a get and show method implemented as
-     *  an asynchronous call which renders the html directly into the main window when the result has arrived  
-     */
-    this.loadPublishedMobileCityMaps = function(renderOption) {
-        var url = baseUrl + "/proxies/getPublishedMobileMaps.php";
+     /** a get and show method implemented as
+      *  an asynchronous call which renders the html directly into the main window when the result has arrived  **/
+    this.getPublishedMobileCityMaps = function(renderOption) {
+        var url = baseUrl + "../proxies/getPublishedMobileMaps.php";
         var body = '{"method": "getMobileCityMaps", "params": [""]}';
         jQuery.ajax({
             type: "POST", url: url, data: body, async: false,
@@ -268,24 +287,70 @@ var kiezatlas = new function() {
         }
     }
 
-    this.onBubbleClick = function (e) {
-        var topicId = e.id;
-        // load geoobject container
-        kiezatlas.info(topicId);
+    this.showKiezatlasMaps = function () {
+        // if ($("#kiezatlas-control").length > 0) return undefined;
+        // console.log($("#kiezatlas-control"));
+        // 
+        // jQuery('a#go-more').click(kiezatlas.hideKiezatlasControl);
+        // quick hack providing a berlin district-selection for a city wide map
+        var kacontrol = jQuery("#kiezatlas-control");
+        var selectList = '<ul class="ka-select">';
+        kacontrol.html(selectList)
+        var kalist = $(".ka-select");
+            for (i=0; i < kiezatlas.publishedMaps.length; i++) {
+                var mobileMap = kiezatlas.publishedMaps[i];
+                kalist.append("<li class=\"map-button\" id=\""+ mobileMap.id +"\">"+ mobileMap.name +"</li>");
+            }
+            // selectList += '</ul>';
+        $(".map-button").click(kiezatlas.selectCityMap);
+        // console.log("toggling kiezatlas listing");
+        kacontrol.toggle("fast");
+        /* kacontrol.click(function (event) {
+            event.stopPropagation();
+            kiezatlas.hideKiezatlasControl();
+        }); **/
+        // 
+        // jQuery(".map-button").click(kiezatlas.selectCityMap);
+        // kiezatlas.closeInfoContainer();
+    }
+
+    this.selectCityMap = function (e) {
+        var cityMapId = e.target.id;
+        for (i=0; i<kiezatlas.publishedMaps.length; i++) {
+            var map = kiezatlas.publishedMaps[i];
+            if (cityMapId == map['id']) {
+                if (map['workspaceId'] == undefined) {
+                    throw new Error("Der Stadtplan konnte nicht geladen werden, es ist ein Fehler in der Konfiguration"
+                        + " der Stadtpl&auml;ne aufgetreten. Bitte versuchen Sie es erneut in dem Sie die aktuelle "
+                        + "Seite der Anwendung neu laden. Falls diese Fehlermeldung erneut auftritt bitte setzen Sie "
+                        + "uns davon in Kenntniss, schicken Sie Bitte den aktuellen Link (aus der Adressleiste) des "
+                        + "Fehlers an mobile@kiezatlas.de damit wir das Problem beheben k&ouml;nnen. \r\n"
+                        + "Vielen herzlichen Dank f&uuml;r Ihre Unterst&uuml;tzung, Ihr KiezAtlas Team.");
+                }
+                kiezatlas.loadCityMap(cityMapId, map['workspaceId']);
+                kiezatlas.setTitleMapLink(cityMapId);
+                var newLink = baseUrl + "?mapId=" + cityMapId + "&workspaceId="+ map['workspaceId'];
+                kiezatlas.pushHistory({ "name" : "map-select", "parameter" : cityMapId }, newLink);
+                kiezatlas.hideKiezatlasControl();
+                break;
+            }
+        }
     }
 
     this.info = function(id) {
         $("#infoo-area").html('<p class="content-body"></p>')
-        // fixme: depends on jquerymobile
+        // used with jquerymobile
         $.mobile.changePage( "#infoo", {
-            transition: "flow", reverse: false, showLoadMsg: true, changeHash: true
+            transition: "flow",
+            reverse: false, showLoadMsg: true,
+            changeHash: true
         })
         // fetch the data, and render it
         kiezatlas.loadCityObjectInfo(id, kiezatlas.renderMobileInfoBody)
     }
 
     this.loadCityObjectInfo = function (topicId, renderFunction) {
-        var url = baseUrl + "/proxies/getGeoObjectInfo.php?topicId="+topicId
+        var url = baseUrl + "../proxies/getGeoObjectInfo.php?topicId="+topicId
         // var body = '{"method": "getGeoObjectInfo", "params": ["' + topicId+ '"]}'
         // 
         jQuery.ajax({
@@ -435,6 +500,7 @@ var kiezatlas = new function() {
         // 
         jQuery("#infoo-area .content-body").html(infoHeader);
         jQuery("#infoo-area .content-body").append(infoItem);
+
     }
 
     this.toggleInfoItem = function (e) {
@@ -523,6 +589,12 @@ var kiezatlas = new function() {
             // <br/><img class="more" src="css/read_more_plus.png"> 
     }
 
+    this.onBubbleClick = function (e) {
+        var topicId = e.id;
+        // load geoobject container
+        kiezatlas.info(topicId);
+    }
+
     this.getMarkerByLatLng = function (latLng) {
         //
         for (var i = 0; i < kiezatlas.markers.length; i++) {
@@ -603,7 +675,15 @@ var kiezatlas = new function() {
     }
   
     this.onLocationError = function (e) {
-        // TODO:
+        kiezatlas.closeNotificationDialog();
+        // 
+        var notificationDialog = '<div id="message" onclick="kiezatlas.closeNotificationDialog()" class="notification">'
+            + '<div id="content">Die Abfrage ihres aktuellen Standorts wurde erfolgreich zur&uuml;ckgewiesen. '
+                + 'Mit dem folgenden Link bieten wir ihnen die M&ouml;glichkeit '
+                + '<a href="javascript:kiezatlas.showKiezatlasMaps()">einen der 12 Berliner Stadtbezirke direkt '
+                + 'anzuw&auml;hlen.</a>'
+            + '</div></div>';
+        jQuery("#map").append(notificationDialog);
     }
 
     this.closeNotificationDialog = function () {
@@ -634,10 +714,6 @@ var kiezatlas = new function() {
     this.mapTopics = topics;
   }
 
-  this.setMapTopics = function(topics) {
-    this.mapTopics = topics;
-  }
-
   this.setCityMapId = function (topicId) {
     this.cityMapId = topicId;
   }
@@ -660,10 +736,6 @@ var kiezatlas = new function() {
 
   this.setWorkspaceCriterias = function(crits) {
     this.workspaceCriterias = crits;
-  }
-
-  this.getWorkspaceCriterias = function() {
-    return this.workspaceCriterias;
   }
   
   this.setServerUrl = function(url) {
@@ -692,7 +764,12 @@ var kiezatlas = new function() {
     if (!this.historyApiSupported) {
       return;
     } else {
-      // TODO:
+      // 
+      if (state.name == "loaded") {
+        kiezatlas.loadCityMap(state.parameter[0], state.parameter[1]);
+      } else if (state.name == "info") {
+        kiezatlas.info(state.parameter);
+      }
       // console.log(state);
     }
   }
@@ -709,6 +786,37 @@ var kiezatlas = new function() {
     window.history.pushState(history_entry.state, null, history_entry.url);
   }
 
+  this.handleOrientationChange = function(width) {
+    var fHeight = kiezatlas.windowHeight();
+    var fWidth = kiezatlas.windowWidth();
+    if (fHeight > fWidth) { // portrait
+      // modify css of info-container
+      jQuery("#info-container").removeClass("info-container-panorama");
+      jQuery("#info-container").removeClass("info-container-panorama-big");
+      jQuery("#info-container").addClass("info-container-portrait");
+      // map
+      jQuery("#map").removeClass("panorama-width-big");
+      jQuery("#map").removeClass("panorama-width");
+      jQuery("#map").addClass("portrait-height");
+      // 
+      // view flag for different interaction logic
+      kiezatlas.panoramaOrientation = false;
+    } else if (fHeight < fWidth) { // panorama
+      // modify css of info-container and map-container
+      jQuery("#info-container").removeClass("info-container-portrait");
+      if (fWidth > 810) {
+        jQuery("#info-container").addClass("info-container-panorama-big");
+        jQuery("#map").addClass("panorama-width-big");
+      } else {
+        jQuery("#info-container").addClass("info-container-panorama");
+        jQuery("#map").addClass("panorama-width");
+      }
+      jQuery("#map").removeClass("portrait-height");
+      // view flag for different interaction logic
+      kiezatlas.panoramaOrientation = true;
+    }
+  }
+  
   this.windowHeight = function () {
     if (self.innerHeight) {
       return self.innerHeight;

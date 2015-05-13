@@ -3,11 +3,12 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Ehrenamtsnetz-App Liste (0.5)</title>
-    <link rel="stylesheet"  href="css/jquery.mobile.theme-1.3.0.css">
-    <link rel="stylesheet"  href="css/jquery.mobile-1.3.0.css">
-    <script src="jquery.min.js"></script>
-    <script src="jquery.mobile-1.3.0.js"></script>
+    <title>Ehrenamtsnetz Web App (Listing)</title>
+    <link rel="stylesheet"  href="/vendor/jquery/jquery.mobile.theme-1.3.0.min.css">
+    <link rel="stylesheet"  href="/vendor/jquery/jquery.mobile-1.3.0.min.css">
+    <link rel="stylesheet"  href="css/customizations.css">
+    <script src="/vendor/jquery/jquery-1.9.1.min.js"></script>
+    <script src="/vendor/jquery/jquery.mobile-1.3.0.min.js"></script>
     <style type="text/css">
         h1.my-title { margin: 10px 10px !important; }
         .ehrenamts-listing .ui-li .ui-btn-text a.ui-link-inherit { white-space: normal; }
@@ -25,7 +26,7 @@
             loadCityMapTopics(cityMapEventId, workspaceEventId, false)
 
             function loadCityMapTopics(mapId, workspaceId, isAction) {
-                var url = "../proxies/getCityMap.php?mapId="+mapId+"&workspaceId="+workspaceId
+                var url = "/proxies/getCityMap.php?mapId="+mapId+"&workspaceId="+workspaceId
                 var body = '{"method": "getMapTopics", "params": ["' + mapId+ '" , "' + workspaceId + '"]}'
                 jQuery.ajax({
                     type: "GET", async: true,
@@ -43,12 +44,11 @@
                             var link = $('<a class="'+ element.id +'" href="#">'+ element.name +'</a>')
                             item.bind('vclick', function(e) {
                                 var topicId = ""+ e.target.parentElement.parentElement.parentElement.id + "";
-                                console.log('clicked button.. ' + topicId);
                                 loadCityObjectInfo(topicId, function(result) {
                                     var originId = getOriginId(result)
                                     // create link for item
                                     if (isAction) {
-                                        var link = "http://www.berlin.de/buergeraktiv/ehrenamtsnetz/angebote/index.cfm"
+                                        var link = "http://www.berlin.de/buergeraktiv/engagieren/buerger/ehrenamtssuche/index.cfm"
                                             + "?dateiname=ehrenamt_projektbeschreibung_mobil.cfm&anwender_id=5&projekt_id="
                                             + originId + "&cfide=0.662606781956"
                                     } else {
@@ -74,7 +74,7 @@
             }
 
             function loadCityObjectInfo (topicId, renderFunction) {
-                var url = "../proxies/getGeoObjectInfo.php?topicId="+topicId;
+                var url = "/proxies/getGeoObjectInfo.php?topicId="+topicId;
                 // var body = '{"method": "getGeoObjectInfo", "params": ["' + topicId+ '"]}';
                 // kiezatlas.showDetailsProgressBar();
                 // 
@@ -118,16 +118,16 @@
 <body>
 
     <div data-role="page" data-filter-placeholder="Suche ...">
-      <div data-role="header" data-theme="b">
-          <!--a target="_blank" href="http://m.kiezatlas.de/ehrenamt" data-icon="home">&nbsp;</a-->
-          <h1 class="my-title" >Berliner Ehrenamtsnetz</h1>
+      <div data-role="header" data-theme="b" data-position="fixed">
+          <h1 class="my-title" >Ehrenamtsnetz App</h1>
+          <a target="_blank" href="http://m.kiezatlas.de/ehrenamt" data-icon="arrow-l">Karte</a>
           <!-- a href="#" data-icon="bars">&nbsp;</a-->
       </div>
       <div data-role="content" data-theme="d">
           <!-- data-inset="true" -->
           <ul data-role="listview" class="ehrenamts-listing" data-filter="true">
             <li data-role="list-divider" id="events-today">Veranstaltungen Heute</li>
-            <li data-role="list-divider" id="actions">Einsatzm&ouml;glichkeiten</li>
+            <li data-role="list-divider" id="actions">Aktivit&auml;ten / Einsatzm&ouml;glichkeiten</li>
           </ul>
       </div>
     </div>

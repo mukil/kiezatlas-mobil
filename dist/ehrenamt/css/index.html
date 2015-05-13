@@ -1,10 +1,11 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Ehrenamtsnetz Web App (Karte)</title>
+  <title>Berliner EhrenamtsnetzApp (0.4.2)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="-o-viewport" content="width=device-width, initial-scale=0.8, maximum-scale=1.0, user-scalable=no">
   <!-- what follows shall be an iphone tweak, found via http://stackoverflow.com/questions/4068559 -->
-  <meta name="apple-mobile-web-app-capable" content="no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta names="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
   <meta property="og:type" content="website"/>
@@ -14,12 +15,14 @@
   <meta property="og:site_name" content="Berliner Ehrenamtsnetz-App"/>
   <meta property="og:description" content="Diese kostenlose App f&uuml;r Ihr Smartphone liefert Ihnen tagesaktuelle Infos zu ehrenamtlichen Veranstaltungen und Einsatzm&ouml;glichkeiten in Berlin."/>
 
-  <link rel="stylesheet" href="/vendor/leaflet/dist/leaflet.css"/>
-  <!--[if lte IE 8]><link rel="stylesheet" href="/vendor/leaflet/dist/leaflet.ie.css" /><![endif]-->
+  <link rel="stylesheet" href="leaflet/dist/leaflet.css"/>
+  <!--[if lte IE 8]><link rel="stylesheet" href="../dist/leaflet.ie.css" /><![endif]-->
   <link rel="stylesheet" href="css/sitestyle.css"/>
-  <script src="/vendor/jquery/jquery-1.9.1.min.js"></script>
-  <script src="/vendor/leaflet/dist/leaflet.js"></script>
-  <script src="ka-ehrenamt.js"></script>
+  <script src="jquery.min.js"></script>
+  <script src="leaflet/dist/leaflet.js"></script>
+  <!-- script src="iscroll.js"></script-->
+  <script src="ka-0.4.2.js"></script>
+  <!-- script src="ka-SNAPSHOT.js"></script-->
 </head>
 <body>
   <div id="map" class="fullsize">loading citymap ...</div>
@@ -38,21 +41,37 @@
     kiezatlas.setMap(map);
     kiezatlas.renderSite();
     kiezatlas.executeBrowserSpecificCrap();
+    /* var requestesMapId = document.location.search.substring(5);
+    if (requestesMapId == undefined || requestesMapId != cityMapEhrenamtId) {
+      kiezatlas.loadCityMap(cityMapEventId, workspaceEventId);
+    } else {
+      kiezatlas.loadCityMap(cityMapEhrenamtId, workspaceEhrenamtId);
+    } **/
     kiezatlas.loadCityMap(cityMapEhrenamtId, workspaceEhrenamtId);
-    kiezatlas.loadMapTiles();
+    // 
+    var cloudmadeUrl = 'http://{s}.tiles.mapbox.com/v3/kiezatlas.map-feifsq6f/{z}/{x}/{y}.png',
+      cloudmadeAttribution = "Tiles &copy; <a href='http://mapbox.com/'>MapBox</a> | " +
+        "Data &copy; <a href='http://www.openstreetmap.org/'>OpenStreetMap</a> and contributors, CC-BY-SA",
+      cloudmade = new L.TileLayer(cloudmadeUrl, {maxZoom: 18, attribution: cloudmadeAttribution});
+    // mapbox: "http://a.tiles.mapbox.com/v3/kiezatlas.map-feifsq6f/${z}/${x}/${y}.png",
+    //            attribution: "Tiles &copy; <a href='http://mapbox.com/'>MapBox</a> | " +
+    //            "Data &copy; <a href='http://www.openstreetmap.org/'>OpenStreetMap</a> " +
+    //            "and contributors, CC-BY-SA",
+    // osm: "http://b.tile.openstreetmap.de/tiles/osmde/"
+    //        attribution: 'Tile server sponsored by STRATO / <b>Europe only</b> / <a href="http://www.openstreetmap.de/germanstyle.html">About style</a>',
+    map.addLayer(cloudmade);
+    // document.addEventListener('touchmove', function (e) { e.preventDefault(); }, false);
+    // 
   </script>
   <div id="navigation">
-    <a id="go-list" class="list-button" href="/ehrenamt/list/"-->
-        <img src="go-list-button.png"/>
-    </a>
     <a id="go-do" class="selected" href="javascript:kiezatlas.loadCityMap(cityMapEhrenamtId, workspaceEhrenamtId)">
-      Aktivit&auml;ten
+      Einsatzm&ouml;glichkeiten
     </a>
     <a id="go-event" href="javascript:kiezatlas.loadCityMap(cityMapEventId, workspaceEventId)">
       Veranstaltungen Heute
     </a>
   </div>
-  <div id="info-container" class="info-container-portrait">
+  <div id="info-container">
     <div id="scroller"></div>
     <img id="close-button" width="15px" src="css/dialog-close15.png" onclick="javascript:kiezatlas.closeInfoContainer()">
     <!-- div id="down-button" onclick="javascript:kiezatlas.scrollInfoDown()">Scroll Down</div-->

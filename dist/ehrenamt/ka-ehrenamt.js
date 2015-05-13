@@ -155,7 +155,7 @@ var kiezatlas = new function() {
   }
 
   this.loadCityMapTopics = function (mapId, workspaceId, handler) {
-    var url = baseUrl + "proxies/getCityMap.php?mapId="+mapId+"&workspaceId="+workspaceId;
+    var url = "/proxies/getCityMap.php?mapId="+mapId+"&workspaceId="+workspaceId;
     var body = '{"method": "getMapTopics", "params": ["' + mapId+ '" , "' + workspaceId + '"]}';
     jQuery.ajax({
       type: "GET", async: false,
@@ -182,7 +182,7 @@ var kiezatlas = new function() {
   }
 
   this.loadCityObjectInfo = function (topicId, renderFunction) {
-    var url = baseUrl + "proxies/getGeoObjectInfo.php?topicId="+topicId;
+    var url = "/proxies/getGeoObjectInfo.php?topicId="+topicId;
     // var body = '{"method": "getGeoObjectInfo", "params": ["' + topicId+ '"]}';
     kiezatlas.showDetailsProgressBar();
     // 

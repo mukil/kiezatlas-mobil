@@ -1,3 +1,4 @@
+
 @-o-viewport {
   width: device-width;
   zoom: 1.2;
@@ -38,12 +39,11 @@ html, body {
 
 #map {
   font-size: 10px;
-  margin-top: 50px;
 }
 
 #map.fullsize {
   width: 100%; height: 100%;
-  position: relative; bottom: 0px;
+  position: relative; bottom: 0px; margin-top: 50px;
 }
 
 .panorama-width {
@@ -61,7 +61,7 @@ html, body {
 #navigation {
   background-color: #388fd0; /** #D3D3D3; opacity: 0.8; be-link blue #2D509A **/
   position: fixed; top: 0px; left: 0px; width: 100%; z-index: 100;
-  text-align: center; height: 35px; padding-top: 5px; padding-top: 15px;
+  text-align: center;
   font: 12px/1.4 "Helvetica Neue", Arial, Helvetica, sans-serif;
   border-bottom: 1px solid #fff;
 }
@@ -71,12 +71,23 @@ html, body {
   color: #fff; text-decoration: none; 
   padding-top: 20px; padding-bottom: 20px;
   padding-left: 10px; padding-right: 10px;
+  position: relative;
+  top: -15px;
 }
 
 #navigation a:hover {
   color: #333; background-color: #fff;
   /** border-bottom: 1px solid #fff; **/
   /** border-top: 4px solid #333; **/
+}
+
+#navigation a.list-button:hover {
+  background-color: #388fd0;
+}
+
+#navigation a.list-button {
+  padding: 0px;
+  top: 0px;
 }
 
 #navigation a.selected {
@@ -150,6 +161,7 @@ div.webpage-button a {
   z-index: 100;
   padding-top: 13px;
 }
+
 .info-container-portrait div.webpage-button a {
   position: fixed; bottom: 0px; left: 0px;
 }
@@ -169,7 +181,7 @@ div.webpage-button a:active {
 
 div.webpage-button a {
   color: #388fd0; font-weight: normal; font-family: sans-serif; border-right: 2px solid #388fd0;
-  text-decoration: none; font-size: 13px; text-shadow: 0px 1px rgba(45, 45, 45, 0.4);
+  text-decoration: none; font-size: 13px; /** text-shadow: 0px 1px rgba(45, 45, 45, 0.4); **/
 }
 
 .info-container-panorama {
@@ -354,3 +366,4 @@ a#go-more:link {
 /** .leaflet-control-zoom-out {
   position: relative; top: -25px; left: 25px;
 } **/
+
